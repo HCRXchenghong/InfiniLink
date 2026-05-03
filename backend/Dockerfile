@@ -7,10 +7,13 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/infinilink-backend ./
 
 FROM alpine:3.20
 WORKDIR /app
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && addgroup -S app \
+    && adduser -S -G app app
 COPY --from=build /out/infinilink-backend /app/infinilink-backend
 COPY static ./static
-RUN mkdir -p ./storage/uploads
+RUN mkdir -p ./storage/uploads \
+    && chown -R app:app /app
+USER app
 EXPOSE 8080
 CMD ["./infinilink-backend"]
-

@@ -105,21 +105,23 @@ func (s *Server) fetchOrCreateUser(ctx context.Context, payload loginRequest) (i
 	}
 
 	background := s.assetURL("profile-cover.svg")
-	externalKey := stableHash(
-		nick,
-		avatar,
-		payload.UserInfo.Country,
-		payload.UserInfo.Province,
-		payload.UserInfo.City,
-	)
-	if payload.Code != "" && externalKey == stableHash("", "", "", "", "") {
+	wechatOpenID, err := s.exchangeWeChatCode(ctx, payload.Code)
+	if err != nil {
+		return 0, err
+	}
+
+	externalKey := stableHash(nick, avatar, payload.UserInfo.Country, payload.UserInfo.Province, payload.UserInfo.City)
+	if wechatOpenID != "" {
+		externalKey = "wx:" + wechatOpenID
+	} else if payload.Code != "" && externalKey == stableHash("", "", "", "", "") {
 		externalKey = stableHash(payload.Code)
 	}
 
 	var id int64
-	err := s.db.QueryRow(ctx, `
+	err = s.db.QueryRow(ctx, `
 		INSERT INTO users (
 			external_key,
+			wechat_openid,
 			user_name,
 			user_avatar,
 			user_background_maps,
@@ -127,141 +129,146 @@ func (s *Server) fetchOrCreateUser(ctx context.Context, payload loginRequest) (i
 			is_official,
 			is_authentication,
 			is_member
-		) VALUES ($1, $2, $3, $4, $5, FALSE, FALSE, FALSE)
+		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, FALSE, FALSE, FALSE)
 		ON CONFLICT (external_key) DO UPDATE
 		SET
-			user_name = EXCLUDED.user_name,
+			wechat_openid = COALESCE(NULLIF(EXCLUDED.wechat_openid, ''), users.wechat_openid),
+			user_name = COALESCE(NULLIF(EXCLUDED.user_name, ''), users.user_name),
 			user_avatar = COALESCE(NULLIF(EXCLUDED.user_avatar, ''), users.user_avatar),
 			updated_at = NOW()
 		RETURNING id
-	`, externalKey, nick, avatar, background, "欢迎来到 InfiniLink").Scan(&id)
+	`, externalKey, wechatOpenID, nick, avatar, background, "欢迎来到 InfiniLink").Scan(&id)
 	return id, err
 }
 
 func (s *Server) buildSelfUser(ctx context.Context, userID int64) (map[string]any, error) {
-	var (
-		id            int64
-		name          string
-		avatar        sql.NullString
-		background    sql.NullString
-		introduce     sql.NullString
-		isOfficial    bool
-		isAuth        bool
-		isMember      bool
-		followCount   int64
-		followerCount int64
-		likeCount     int64
-	)
-	err := s.db.QueryRow(ctx, `
-		SELECT
-			u.id,
-			u.user_name,
-			u.user_avatar,
-			u.user_background_maps,
-			u.user_introduce,
-			u.is_official,
-			u.is_authentication,
-			u.is_member,
-			COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
-			COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
-			COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0)
-		FROM users u
-		WHERE u.id = $1
-	`, userID).Scan(
-		&id,
-		&name,
-		&avatar,
-		&background,
-		&introduce,
-		&isOfficial,
-		&isAuth,
-		&isMember,
-		&followCount,
-		&followerCount,
-		&likeCount,
-	)
-	if err != nil {
-		return nil, err
-	}
+	return cachedJSON(s, ctx, userCacheKey(userID), s.cfg.UserCacheTTL, func(ctx context.Context) (map[string]any, error) {
+		var (
+			id            int64
+			name          string
+			avatar        sql.NullString
+			background    sql.NullString
+			introduce     sql.NullString
+			isOfficial    bool
+			isAuth        bool
+			isMember      bool
+			followCount   int64
+			followerCount int64
+			likeCount     int64
+		)
+		err := s.db.QueryRow(ctx, `
+			SELECT
+				u.id,
+				u.user_name,
+				u.user_avatar,
+				u.user_background_maps,
+				u.user_introduce,
+				u.is_official,
+				u.is_authentication,
+				u.is_member,
+				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
+				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
+				COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0)
+			FROM users u
+			WHERE u.id = $1
+		`, userID).Scan(
+			&id,
+			&name,
+			&avatar,
+			&background,
+			&introduce,
+			&isOfficial,
+			&isAuth,
+			&isMember,
+			&followCount,
+			&followerCount,
+			&likeCount,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	return map[string]any{
-		"id":                   id,
-		"user_name":            name,
-		"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
-		"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
-		"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
-		"is_official":          boolToInt(isOfficial),
-		"is_authentication":    boolToInt(isAuth),
-		"is_member":            boolToInt(isMember),
-		"follow_count":         followCount,
-		"follow_user_count":    followerCount,
-		"like_count":           likeCount,
-	}, nil
+		return map[string]any{
+			"id":                   id,
+			"user_name":            name,
+			"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
+			"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
+			"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
+			"is_official":          boolToInt(isOfficial),
+			"is_authentication":    boolToInt(isAuth),
+			"is_member":            boolToInt(isMember),
+			"follow_count":         followCount,
+			"follow_user_count":    followerCount,
+			"like_count":           likeCount,
+		}, nil
+	})
 }
 
 func (s *Server) buildPublicUser(ctx context.Context, viewerID, userID int64) (map[string]any, error) {
-	var (
-		id          int64
-		name        string
-		avatar      sql.NullString
-		background  sql.NullString
-		introduce   sql.NullString
-		isOfficial  bool
-		isAuth      bool
-		isMember    bool
-		followTotal int64
-		fansTotal   int64
-		likeTotal   int64
-		isFollow    bool
-	)
-	err := s.db.QueryRow(ctx, `
-		SELECT
-			u.id,
-			u.user_name,
-			u.user_avatar,
-			u.user_background_maps,
-			u.user_introduce,
-			u.is_official,
-			u.is_authentication,
-			u.is_member,
-			COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
-			COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
-			COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0),
-			EXISTS(SELECT 1 FROM user_follows uf WHERE uf.user_id = $2 AND uf.target_user_id = u.id)
-		FROM users u
-		WHERE u.id = $1
-	`, userID, viewerID).Scan(
-		&id,
-		&name,
-		&avatar,
-		&background,
-		&introduce,
-		&isOfficial,
-		&isAuth,
-		&isMember,
-		&followTotal,
-		&fansTotal,
-		&likeTotal,
-		&isFollow,
-	)
-	if err != nil {
-		return nil, err
-	}
+	return cachedJSON(s, ctx, publicUserCacheKey(viewerID, userID), s.cfg.UserCacheTTL, func(ctx context.Context) (map[string]any, error) {
+		var (
+			id          int64
+			name        string
+			avatar      sql.NullString
+			background  sql.NullString
+			introduce   sql.NullString
+			isOfficial  bool
+			isAuth      bool
+			isMember    bool
+			followTotal int64
+			fansTotal   int64
+			likeTotal   int64
+			isFollow    bool
+		)
+		err := s.db.QueryRow(ctx, `
+			SELECT
+				u.id,
+				u.user_name,
+				u.user_avatar,
+				u.user_background_maps,
+				u.user_introduce,
+				u.is_official,
+				u.is_authentication,
+				u.is_member,
+				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
+				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
+				COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0),
+				EXISTS(SELECT 1 FROM user_follows uf WHERE uf.user_id = $2 AND uf.target_user_id = u.id)
+			FROM users u
+			WHERE u.id = $1
+		`, userID, viewerID).Scan(
+			&id,
+			&name,
+			&avatar,
+			&background,
+			&introduce,
+			&isOfficial,
+			&isAuth,
+			&isMember,
+			&followTotal,
+			&fansTotal,
+			&likeTotal,
+			&isFollow,
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	return map[string]any{
-		"id":                   id,
-		"user_name":            name,
-		"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
-		"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
-		"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
-		"is_official":          boolToInt(isOfficial),
-		"is_authentication":    boolToInt(isAuth),
-		"is_member":            boolToInt(isMember),
-		"followTotal":          followTotal,
-		"fansTotal":            fansTotal,
-		"likeTotal":            likeTotal,
-		"isFollow":             isFollow,
-	}, nil
+		return map[string]any{
+			"id":                   id,
+			"user_name":            name,
+			"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
+			"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
+			"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
+			"is_official":          boolToInt(isOfficial),
+			"is_authentication":    boolToInt(isAuth),
+			"is_member":            boolToInt(isMember),
+			"followTotal":          followTotal,
+			"fansTotal":            fansTotal,
+			"likeTotal":            likeTotal,
+			"isFollow":             boolToInt(isFollow),
+		}, nil
+	})
 }
 
 func (s *Server) buildPagination(page int, total int64, items any) map[string]any {

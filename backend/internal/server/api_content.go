@@ -50,48 +50,53 @@ func (s *Server) handleIndexBanner(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := s.db.Query(ctx, `
-		SELECT slideshow_type, link, posts_id, circle_id, poster
-		FROM banners
-		ORDER BY sort_order ASC, id ASC
-	`)
+	banners, err := cachedJSON(s, ctx, cacheKey("banner", "index"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		rows, err := s.db.Query(ctx, `
+			SELECT slideshow_type, link, posts_id, circle_id, poster
+			FROM banners
+			ORDER BY sort_order ASC, id ASC
+		`)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var banners []map[string]any
+		for rows.Next() {
+			var (
+				typ      int
+				link     sql.NullString
+				postsID  sql.NullInt64
+				circleID sql.NullInt64
+				poster   sql.NullString
+			)
+			if err := rows.Scan(&typ, &link, &postsID, &circleID, &poster); err != nil {
+				return nil, err
+			}
+			banners = append(banners, map[string]any{
+				"slideshow_type": typ,
+				"link":           nullableString(link),
+				"posts_id":       nullInt64(postsID),
+				"circle_id":      nullInt64(circleID),
+				"poster":         pickString(poster, s.assetURL("banner-default.svg")),
+			})
+		}
+		if len(banners) == 0 {
+			banners = []map[string]any{
+				{
+					"slideshow_type": 0,
+					"link":           "https://github.com/HCRXchenghong/InfiniLink",
+					"posts_id":       0,
+					"circle_id":      0,
+					"poster":         s.assetURL("banner-default.svg"),
+				},
+			}
+		}
+		return banners, rows.Err()
+	})
 	if err != nil {
 		s.respondError(w, 500, "获取轮播图失败")
 		return
-	}
-	defer rows.Close()
-
-	var banners []map[string]any
-	for rows.Next() {
-		var (
-			typ      int
-			link     sql.NullString
-			postsID  sql.NullInt64
-			circleID sql.NullInt64
-			poster   sql.NullString
-		)
-		if err := rows.Scan(&typ, &link, &postsID, &circleID, &poster); err != nil {
-			s.respondError(w, 500, "读取轮播图失败")
-			return
-		}
-		banners = append(banners, map[string]any{
-			"slideshow_type": typ,
-			"link":           nullableString(link),
-			"posts_id":       nullInt64(postsID),
-			"circle_id":      nullInt64(circleID),
-			"poster":         pickString(poster, s.assetURL("banner-default.svg")),
-		})
-	}
-	if len(banners) == 0 {
-		banners = []map[string]any{
-			{
-				"slideshow_type": 0,
-				"link":           "https://github.com/HCRXchenghong/InfiniLink",
-				"posts_id":       0,
-				"circle_id":      0,
-				"poster":         s.assetURL("banner-default.svg"),
-			},
-		}
 	}
 	s.respond(w, banners, "ok")
 }
@@ -270,54 +275,70 @@ func (s *Server) handleSearchHotList(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	rows, err := s.db.Query(ctx, `
-		SELECT keyword, COUNT(*) AS hits
-		FROM search_histories
-		GROUP BY keyword
-		ORDER BY hits DESC, MAX(created_at) DESC
-		LIMIT 10
-	`)
+	result, err := cachedJSON(s, ctx, cacheKey("search", "hot"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		rows, err := s.db.Query(ctx, `
+			SELECT keyword, COUNT(*) AS hits
+			FROM search_histories
+			GROUP BY keyword
+			ORDER BY hits DESC, MAX(created_at) DESC
+			LIMIT 10
+		`)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		var result []map[string]any
+		for rows.Next() {
+			var keyword string
+			var hits int64
+			if err := rows.Scan(&keyword, &hits); err != nil {
+				return nil, err
+			}
+			result = append(result, map[string]any{
+				"id":             stableHash(keyword),
+				"search_content": keyword,
+				"hits":           hits,
+			})
+		}
+		if len(result) == 0 {
+			result = []map[string]any{
+				{"id": 1, "search_content": "Go 后端"},
+				{"id": 2, "search_content": "内容社区"},
+				{"id": 3, "search_content": "InfiniLink"},
+			}
+		}
+		return result, rows.Err()
+	})
 	if err != nil {
 		s.respondError(w, 500, "获取热门搜索失败")
 		return
-	}
-	defer rows.Close()
-	var result []map[string]any
-	for rows.Next() {
-		var keyword string
-		var hits int64
-		if err := rows.Scan(&keyword, &hits); err != nil {
-			s.respondError(w, 500, "读取热门搜索失败")
-			return
-		}
-		result = append(result, map[string]any{
-			"id":             stableHash(keyword),
-			"search_content": keyword,
-			"hits":           hits,
-		})
-	}
-	if len(result) == 0 {
-		result = []map[string]any{
-			{"id": 1, "search_content": "Go 后端"},
-			{"id": 2, "search_content": "内容社区"},
-			{"id": 3, "search_content": "InfiniLink"},
-		}
 	}
 	s.respond(w, result, "ok")
 }
 
 func (s *Server) handleSearchCarouselList(w http.ResponseWriter, r *http.Request) {
-	s.respond(w, []map[string]any{
-		{"search_content": "找圈子"},
-		{"search_content": "看推荐"},
-		{"search_content": "搜用户"},
-	}, "ok")
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	result, err := cachedJSON(s, ctx, cacheKey("search", "carousel"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		return []map[string]any{
+			{"search_content": "找圈子"},
+			{"search_content": "看推荐"},
+			{"search_content": "搜用户"},
+		}, nil
+	})
+	if err != nil {
+		s.respondError(w, 500, "获取搜索推荐失败")
+		return
+	}
+	s.respond(w, result, "ok")
 }
 
 func (s *Server) handleTagsHot(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	tags, err := s.fetchTags(ctx, 20)
+	tags, err := cachedJSON(s, ctx, cacheKey("tags", "hot"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		return s.fetchTags(ctx, 20)
+	})
 	if err != nil {
 		s.respondError(w, 500, "获取热门标签失败")
 		return
@@ -328,7 +349,9 @@ func (s *Server) handleTagsHot(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleTagsRecommend(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	tags, err := s.fetchTags(ctx, 12)
+	tags, err := cachedJSON(s, ctx, cacheKey("tags", "recommend"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		return s.fetchTags(ctx, 12)
+	})
 	if err != nil {
 		s.respondError(w, 500, "获取推荐标签失败")
 		return
@@ -364,6 +387,7 @@ func (s *Server) handleTagsAdd(w http.ResponseWriter, r *http.Request) {
 		s.respondError(w, 500, "创建标签失败")
 		return
 	}
+	s.cacheDelete(ctx, cacheKey("tags", "hot"), cacheKey("tags", "recommend"))
 	s.respond(w, map[string]any{
 		"id":        tagID,
 		"tags_name": name,
@@ -377,7 +401,9 @@ func (s *Server) handlePlateOptions(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handlePlateList(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	plates, err := s.fetchPlates(ctx)
+	plates, err := cachedJSON(s, ctx, cacheKey("plates", "list"), s.cfg.CacheTTL, func(ctx context.Context) ([]map[string]any, error) {
+		return s.fetchPlates(ctx)
+	})
 	if err != nil {
 		s.respondError(w, 500, "获取板块列表失败")
 		return

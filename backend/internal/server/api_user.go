@@ -45,18 +45,27 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleConfigData(w http.ResponseWriter, r *http.Request) {
-	s.respond(w, map[string]any{
-		"app_login_bg":                s.assetURL("login-bg.svg"),
-		"app_title":                   s.cfg.AppName,
-		"app_intro":                   "把喜欢的人、圈子和内容连接起来。",
-		"about_logo":                  s.assetURL("about-logo.svg"),
-		"about_title":                 "InfiniLink 内容兴趣社区",
-		"about_copyright":             "Copyright © InfiniLink",
-		"members_poster":              s.assetURL("members-poster.svg"),
-		"official_popup_poster":       s.assetURL("official-popup.svg"),
-		"authentication_popup_poster": s.assetURL("authentication-popup.svg"),
-		"members_popup_poster":        s.assetURL("member-popup.svg"),
-	}, "ok")
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	payload, err := cachedJSON(s, ctx, cacheKey("app", "config"), s.cfg.CacheTTL, func(ctx context.Context) (map[string]any, error) {
+		return map[string]any{
+			"app_login_bg":                s.assetURL("login-bg.svg"),
+			"app_title":                   s.cfg.AppName,
+			"app_intro":                   "把喜欢的人、圈子和内容连接起来。",
+			"about_logo":                  s.assetURL("about-logo.svg"),
+			"about_title":                 "InfiniLink 内容兴趣社区",
+			"about_copyright":             "Copyright © InfiniLink",
+			"members_poster":              s.assetURL("members-poster.svg"),
+			"official_popup_poster":       s.assetURL("official-popup.svg"),
+			"authentication_popup_poster": s.assetURL("authentication-popup.svg"),
+			"members_popup_poster":        s.assetURL("member-popup.svg"),
+		}, nil
+	})
+	if err != nil {
+		s.respondError(w, 500, "加载配置失败")
+		return
+	}
+	s.respond(w, payload, "ok")
 }
 
 func (s *Server) handleClauseDetail(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +136,7 @@ func (s *Server) handleUpdateUserInfo(w http.ResponseWriter, r *http.Request) {
 		s.respondError(w, 500, "更新资料失败")
 		return
 	}
+	s.cacheDelete(ctx, userCacheKey(userID))
 	s.respond(w, true, "保存成功")
 }
 
@@ -166,6 +176,7 @@ func (s *Server) handleToggleFollowUser(w http.ResponseWriter, r *http.Request) 
 		s.respondError(w, 500, "操作失败")
 		return
 	}
+	s.cacheDelete(ctx, userCacheKey(userID), userCacheKey(payload.PostsUserID))
 	s.respond(w, true, message)
 }
 
@@ -536,7 +547,7 @@ func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 	rows, err := s.db.Query(ctx, `
-		SELECT id, order_number, order_type, order_pay_price, posts_id, created_at, COUNT(*) OVER()
+		SELECT id, order_number, order_type, order_pay_price, posts_id, status, provider, paid_at, created_at, COUNT(*) OVER()
 		FROM orders
 		WHERE user_id = $1
 		ORDER BY created_at DESC
@@ -554,15 +565,18 @@ func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
 	)
 	for rows.Next() {
 		var (
-			id      int64
-			number  string
-			typ     int
-			price   float64
-			postsID sql.NullInt64
-			created time.Time
-			count   int64
+			id       int64
+			number   string
+			typ      int
+			price    float64
+			postsID  sql.NullInt64
+			status   string
+			provider string
+			paidAt   sql.NullTime
+			created  time.Time
+			count    int64
 		)
-		if err := rows.Scan(&id, &number, &typ, &price, &postsID, &created, &count); err != nil {
+		if err := rows.Scan(&id, &number, &typ, &price, &postsID, &status, &provider, &paidAt, &created, &count); err != nil {
 			s.respondError(w, 500, "读取订单失败")
 			return
 		}
@@ -579,6 +593,9 @@ func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
 			"order_type":      typ,
 			"order_pay_price": price,
 			"posts_id":        nullInt64(postsID),
+			"status":          status,
+			"provider":        provider,
+			"paid_at":         nullableTime(paidAt),
 			"created_at":      formatListDatetime(created),
 			"type_content": map[string]any{
 				"title":   title,
@@ -761,6 +778,7 @@ func (s *Server) handleFreeGetVIP(w http.ResponseWriter, r *http.Request) {
 		s.respondError(w, 500, "开通会员失败")
 		return
 	}
+	s.cacheDelete(ctx, userCacheKey(userID))
 	s.respond(w, true, "领取成功")
 }
 
@@ -872,10 +890,19 @@ func (s *Server) handleAuditPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleMembersPrice(w http.ResponseWriter, r *http.Request) {
-	s.respond(w, s.cfg.MembershipPrice, "ok")
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	price, err := cachedJSON(s, ctx, cacheKey("payment", "member-price"), s.cfg.CacheTTL, func(ctx context.Context) (float64, error) {
+		return s.cfg.MembershipPrice, nil
+	})
+	if err != nil {
+		s.respondError(w, 500, "获取会员价格失败")
+		return
+	}
+	s.respond(w, price, "ok")
 }
 
-func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handleOrderPlaceholder(w http.ResponseWriter, r *http.Request) {
 	userID, ok := s.requireUserID(w, r)
 	if !ok {
 		return

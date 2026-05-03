@@ -26,6 +26,10 @@ func main() {
 		Addr:              cfg.HTTPAddr,
 		Handler:           srv.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       cfg.HTTPReadTimeout,
+		WriteTimeout:      cfg.HTTPWriteTimeout,
+		IdleTimeout:       cfg.HTTPIdleTimeout,
+		MaxHeaderBytes:    cfg.MaxHeaderBytes,
 	}
 
 	go func() {
@@ -39,7 +43,7 @@ func main() {
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Printf("shutdown error: %v", err)

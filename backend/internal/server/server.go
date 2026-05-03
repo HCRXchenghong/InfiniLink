@@ -30,10 +30,11 @@ type contextKey string
 const userContextKey contextKey = "viewer_user_id"
 
 type Server struct {
-	cfg    config.Config
-	db     *pgxpool.Pool
-	redis  *redis.Client
-	router http.Handler
+	cfg        config.Config
+	db         *pgxpool.Pool
+	redis      *redis.Client
+	httpClient *http.Client
+	router     http.Handler
 }
 
 type apiResponse struct {
@@ -59,7 +60,17 @@ func New(cfg config.Config) (*Server, error) {
 		return nil, fmt.Errorf("create assets dir: %w", err)
 	}
 
-	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	dbConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse postgres config: %w", err)
+	}
+	dbConfig.MaxConns = cfg.DBMaxConns
+	dbConfig.MinConns = cfg.DBMinConns
+	dbConfig.MaxConnLifetime = cfg.DBMaxConnLifetime
+	dbConfig.MaxConnIdleTime = cfg.DBMaxConnIdleTime
+	dbConfig.HealthCheckPeriod = cfg.DBHealthCheck
+
+	db, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}
@@ -74,7 +85,14 @@ func New(cfg config.Config) (*Server, error) {
 		}
 	}
 
-	cache := redis.NewClient(&redis.Options{Addr: cfg.RedisAddr})
+	cache := redis.NewClient(&redis.Options{
+		Addr:         cfg.RedisAddr,
+		Username:     cfg.RedisUsername,
+		Password:     cfg.RedisPassword,
+		DB:           cfg.RedisDB,
+		PoolSize:     cfg.RedisPoolSize,
+		MinIdleConns: minInt(cfg.RedisPoolSize/8, 8),
+	})
 	if err := cache.Ping(ctx).Err(); err != nil {
 		log.Printf("redis unavailable, continuing without cache: %v", err)
 		cache = nil
@@ -84,6 +102,9 @@ func New(cfg config.Config) (*Server, error) {
 		cfg:   cfg,
 		db:    db,
 		redis: cache,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
 	}
 	s.router = s.routes()
 	return s, nil
@@ -112,9 +133,12 @@ func (s *Server) routes() http.Handler {
 	r.Use(s.optionalAuth)
 
 	r.Get("/healthz", s.handleHealth)
+	r.Get("/readyz", s.handleReady)
 	r.Handle("/uploads/*", http.StripPrefix("/uploads/", http.FileServer(http.Dir(s.cfg.UploadDir))))
 	r.Handle("/assets/*", http.StripPrefix("/assets/", http.FileServer(http.Dir(s.cfg.AssetsDir))))
 	r.HandleFunc("/storage/*", s.handleLegacyStorage)
+	r.Post("/payments/wechat/notify", s.handleWechatPayNotify)
+	r.Post("/payments/ifpay/notify", s.handleIFPayNotify)
 
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Post("/login", s.handleLogin)
@@ -201,6 +225,8 @@ func (s *Server) routes() http.Handler {
 		api.Post("/massages/userDelMessage", s.handleDeleteMessageThread)
 
 		api.Post("/order", s.handleOrder)
+		api.Get("/payment/options", s.handlePaymentOptions)
+		api.Get("/order/status", s.handleOrderStatus)
 		api.Get("/getMembersPrice", s.handleMembersPrice)
 		api.Post("/wx_login", s.handlePCLogin)
 	})
@@ -247,6 +273,26 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	s.respond(w, map[string]any{
 		"service": "infinilink-backend",
 		"time":    time.Now().Format(time.RFC3339),
+	}, "ok")
+}
+
+func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	if err := s.db.Ping(ctx); err != nil {
+		s.respondError(w, 500, "postgres not ready")
+		return
+	}
+	if s.redis != nil {
+		if err := s.redis.Ping(ctx).Err(); err != nil {
+			s.respondError(w, 500, "redis not ready")
+			return
+		}
+	}
+	s.respond(w, map[string]any{
+		"postgres": true,
+		"redis":    s.redis != nil,
 	}, "ok")
 }
 
@@ -410,4 +456,11 @@ func (s *Server) uploadURL(name string) string {
 
 func (s *Server) localUploadPath(name string) string {
 	return filepath.Join(s.cfg.UploadDir, name)
+}
+
+func minInt(value, fallback int) int {
+	if value <= 0 {
+		return fallback
+	}
+	return value
 }

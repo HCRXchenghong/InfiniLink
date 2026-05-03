@@ -1,12 +1,13 @@
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: infinilink
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB:-infinilink}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d infinilink"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-infinilink}"]
       interval: 10s
       timeout: 5s
       retries: 8
@@ -15,9 +16,10 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-change-me}"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-change-me} ping"]
       interval: 10s
       timeout: 5s
       retries: 8
@@ -26,13 +28,14 @@ services:
 
   backend:
     build: .
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     env_file:
-      - .env
+      - .env.production
     expose:
       - "8080"
     healthcheck:
@@ -46,6 +49,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     depends_on:
       backend:
         condition: service_healthy
