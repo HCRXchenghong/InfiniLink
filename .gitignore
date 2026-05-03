@@ -5,4 +5,5 @@ miniprogram_npm/
 dist/
 build/
 coverage/
-
+backend/.env
+backend/storage/

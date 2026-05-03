@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">
+  <rect width="1200" height="400" fill="#0f172a"/>
+  <rect x="48" y="48" width="1104" height="304" rx="32" fill="#111827"/>
+  <text x="90" y="180" fill="#f8fafc" font-size="62" font-family="Arial, sans-serif">InfiniLink</text>
+  <text x="90" y="250" fill="#cbd5e1" font-size="28" font-family="Arial, sans-serif">Content community backend ready</text>
+</svg>
+
