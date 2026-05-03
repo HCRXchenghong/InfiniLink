@@ -1,0 +1,267 @@
+page {
+  background: #f5f5f5;
+}
+
+.block-top {
+  width: 670rpx;
+  margin: 0 auto;
+  padding: 40rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.top-left .title {
+  color: #333;
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.top-left .translation {
+  color: #444;
+  font-size: 28rpx;
+  padding: 10rpx 0 30rpx;
+}
+
+.top-right {
+  font-size: 28rpx;
+  color: #ffffff;
+  font-weight: bold;
+  background: #333;
+  width: 160rpx;
+  height: 80rpx;
+  border-radius: 80rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 24px 0 rgb(0 0 0 / 10%);
+}
+
+.block-center {
+  width: 670rpx;
+  margin: 0 auto;
+  padding: 40rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.center-box {
+  width: 165rpx;
+  padding: 20rpx;
+  border-radius: 30rpx;
+  background: #ffffff;
+}
+
+.add-date {
+  font-size: 24rpx;
+  color: #000;
+}
+
+.list-box {
+  width: 670rpx;
+  margin: 40rpx auto;
+  animation: fadeIn 1s ease;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.describe-container {
+  display: flex;
+  align-items: flex-end;
+  padding: 15rpx 0;
+}
+
+.describe-container .status {
+  padding-left: 30rpx;
+  color: #333;
+  font-size: 28rpx;
+  font-weight: bold;
+}
+
+.withdrawal-add-box {
+  width: 630rpx;
+  height: 760rpx;
+  border-radius: 30rpx;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.withdrawal-add-box-image {
+  position: absolute;
+  top: -150rpx;
+  width: 400rpx;
+  height: 400rpx;
+}
+
+.withdrawal-add-input-box {
+  margin-top: 20rpx;
+  width: 460rpx;
+  height: 50rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 8rpx;
+  background: #f5f5f5;
+  font-size: 30rpx;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.withdrawal-add-input-box text {
+  width: 140rpx;
+  color: #333;
+  font-size: 28rpx;
+}
+
+.withdrawal-add-input {
+  width: 320rpx;
+  height: 50rpx;
+}
+
+.withdrawal-add-input-phs {
+  font-size: 26rpx;
+  color: #949494;
+}
+
+.withdrawal-add-box-view {
+  margin: 20rpx 0 20rpx;
+  width: 520rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.withdrawal-add-box-view view {
+  padding: 10rpx 24rpx;
+  color: #333;
+  border-radius: 8rpx;
+  font-size: 28rpx;
+  background: #f5f5f5;
+}
+
+.bd {
+  background: #333 !important;
+  color: #fff !important;
+}
+
+.hd {
+  color: #949494 !important;
+}
+
+.withdrawal-add-box-btn {
+  margin: 40rpx 0 10rpx;
+  width: 300rpx;
+  height: 80rpx;
+  border-radius: 80rpx;
+  color: #ffffff;
+  font-size: 28rpx;
+  font-weight: bold;
+  background: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 24px 0 rgb(0 0 0 / 10%);
+}
+
+.details {
+  width: 500rpx;
+  padding: 20rpx 30rpx;
+  color: #ff6d6d;
+  font-size: 22rpx;
+}
+
+.nav {
+  width: 100%;
+  height: 90rpx;
+  display: flex;
+  font-size: 32rpx;
+  line-height: 90rpx;
+  background: #f5f5f5;
+}
+
+.header-sticky-class {
+  box-sizing: border-box !important;
+  z-index: 99 !important;
+}
+
+.tag-box {
+  padding: 0 30rpx;
+}
+
+.taga-item {
+  font-size: 32rpx;
+  color: #949494;
+  font-weight: 450;
+}
+
+.tag-box .active {
+  color: #333333 !important;
+  font-weight: bold !important;
+  position: relative;
+}
+
+.tag-box .active:after {
+  content: "";
+  display: block;
+  width: 16rpx;
+  height: 6rpx;
+  background: #333333;
+  border-radius: 6rpx;
+  position: absolute;
+  bottom: 10rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all .4s ease;
+}
+
+.chen-box {
+  margin-bottom: 40rpx;
+}
+
+.chen-box-conent {
+  display: flex;
+  align-items: center;
+}
+
+.chen-box-conent image {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 128rpx;
+  margin-right: 20rpx;
+  animation: fadeIn 1s ease;
+}
+
+.chen-box-conent .chen-box-text {
+  width: 400rpx;
+  font-size: 28rpx;
+  color: #333;
+  line-height: 40rpx;
+}
+
+.chen-box-text text {
+  font-size: 24rpx;
+  color: #949494;
+}
+
+.see-posts {
+  margin-top: 30rpx;
+  width: 220rpx;
+  height: 70rpx;
+  border-radius: 70rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333333;
+  font-weight: bold;
+  font-size: 28rpx;
+  background: #fff;
+}
+
+.see-posts image {
+  width: 38rpx;
+  height: 38rpx;
+  margin-right: 16rpx;
+}

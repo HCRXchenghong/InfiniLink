@@ -1,0 +1,27 @@
+<view class="container">
+  <image wx:if="{{loadmore}}" class="load-log" src="/image/load.gif"></image>
+  <block wx:else>
+    <view class="user-list">
+      <block wx:for="{{userList}}" wx:key="id">
+        <view bindtap="userTap" class="user-item" data-uid="{{item.user.id}}">
+          <image class="avatars" lazyLoad="{{true}}" mode="aspectFill" src="{{item.user.user_avatar}}"></image>
+          <view class="infos">
+            <view class="nickname">{{item.user.user_name}}</view>
+          </view>
+          <block wx:if="{{isUser}}">
+            <button wx:if="{{type == 0 && item.is_together_follow}}" catchtap="userActionFollow"
+              data-userid="{{item.user.id}}" data-index="{{index}}" class="follow-btn follow">互相关注</button>
+            <button wx:if="{{type == 1}}" catchtap="userActionFollow" data-userid="{{item.user.id}}"
+              data-index="{{index}}"
+              class="follow-btn {{item.is_together_follow?'follow':''}}">{{item.is_together_follow?'互相关注':'关注'}}</button>
+          </block>
+        </view>
+      </block>
+      <l-loadmore show="{{loading}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+        line="{{false}}" color="#949494" />
+    </view>
+    <view class="empty-view" wx:if="{{userList.length <= 0}}">
+      <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Astronaut-cuate.png" title="空" />
+    </view>
+  </block>
+</view>

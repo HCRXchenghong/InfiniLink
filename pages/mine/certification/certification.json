@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "认证信息",
+  "usingComponents": {
+    "l-notice-bar": "/linui/notice-bar/index"
+  }
+}

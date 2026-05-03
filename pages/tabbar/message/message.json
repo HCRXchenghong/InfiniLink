@@ -1,0 +1,8 @@
+{
+  "navigationStyle": "default",
+  "navigationBarTitleText": "消息",
+  "usingComponents": {
+    "l-slide-view": "/linui/slide-view/index",
+    "mp-html": "/components/mp-weixin/index"
+  }
+}

@@ -1,0 +1,72 @@
+<block wx:if="{{swiperload}}">
+  <view class="loading">
+    <image mode="aspectFit" src="/image/load.gif"></image>
+  </view>
+</block>
+<block wx:else>
+  <block wx:if="{{isA}}">
+    <view class="box">
+      <block wx:if="{{alist.authentication_state == 0}}">
+        <image src="http://127.0.0.1/storage/wxprogram/image/People%20search-amico.png"></image>
+        <text>认证审核中...</text>
+      </block>
+      <block wx:else>
+        <image
+          src="{{alist.authentication_state == 1?'http://127.0.0.1/storage/wxprogram/image/Confirmed-amico.png':'http://127.0.0.1/storage/wxprogram/image/No%20data-pana.png'}}">
+        </image>
+        <text>{{alist.authentication_state == 1?'已认证成功!':'认证被驳回了!'}}</text>
+        <text>{{alist.authentication_state == 1?'认证主体：'+alist.name:'驳回原因：'+alist.overrule_content}}</text>
+        <view bindtap="upAuthentication">{{alist.authentication_state == 1?'更换认证主体':'重新提交认证'}}</view>
+      </block>
+    </view>
+  </block>
+  <block wx:else>
+    <view class="container" style="padding-bottom: 50px;">
+      <l-notice-bar l-class="notice-bar" l-icon-class="notice-bar-icon" show="{{notice}}" close="{{true}}" type="still"
+        front-icon-name="notification" end-icon-name="close" front-icon-size="32" front-icon-color="#fff"
+        end-icon-color="#fff">
+        身份认证，专属认证勋章标识与众不同.
+      </l-notice-bar>
+      <view class="content-container" style="padding-bottom: 30px;">
+        <view class="item">
+          <text class="item-title">名称</text>
+          <input type="text" bindinput="onInputChange" class="item-input" data-type="{{1}}"
+            maxlength="{{nameMaxLength}}" placeholder="姓名/主体名称" value="{{name}}"></input>
+          <text class="item-tip">{{nameLength}}/{{nameMaxLength}}</text>
+        </view>
+        <view class="item">
+          <text class="item-title">联系方式</text>
+          <input type="text" bindinput="onInputChange" class="item-input" data-type="{{2}}"
+            maxlength="{{nameMaxLength}}" placeholder="电话号码/微信号" value="{{phone}}"></input>
+          <text class="item-tip">{{phoneLength}}/{{phoneMaxLength}}</text>
+        </view>
+        <view class="item">
+          <text class="item-title">简介</text>
+          <textarea bindinput="onInputChange" class="item-area" data-type="{{3}}" maxlength="{{descMaxLength}}"
+            placeholder="简单的介绍一下" value="{{desc}}"></textarea>
+          <text class="item-tip">{{descLength}}/{{descMaxLength}}</text>
+        </view>
+        <view class="item">
+          <view class="item-title">身份信息证明图片
+            <text class="item-h-tip">1.个人自媒体用户可上传身份证正反面照片或其他app个人中心认证页面</text>
+            <text class="item-h-tip">2.企业或其他主体可上传营业执照或其他app个人中心认证页面</text>
+          </view>
+          <view class="img-box">
+            <view bindtap="addimage" data-name="imagesubject" class="logo-container">
+              <block wx:if="{{imagesubject==null}}">
+                <image class="logo-add" src="/image/new_construction_circle_cover_upload_picture.png"></image>
+                <view class="img-text">点击上传</view>
+              </block>
+              <block wx:else>
+                <image class="logo-image" mode="aspectFill" src="{{imagesubject}}"></image>
+                <image class="logo-camera" bindtap="delImage" src="/image/icon_delete_buoy.png"></image>
+              </block>
+            </view>
+          </view>
+        </view>
+        <text class="bottom-tip-text">身份信息证明图片轻航官方承诺仅用于认证审核不做其他用途。</text>
+      </view>
+      <view bindtap="addAuthentication" class="bottom-button">提交审核</view>
+    </view>
+  </block>
+</block>

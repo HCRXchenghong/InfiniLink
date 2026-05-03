@@ -1,0 +1,34 @@
+<l-skeleton l-class="l-skeleton" loading="{{loading}}" rows="2" paragraph="true" title="{{false}}"
+  rows-width="{{['690rpx','690rpx']}}" rows-height="{{['400rpx','400rpx']}}">
+  <view wx:if="{{orderList.length>0}}" class="container">
+    <view class="box" wx:for="{{orderList}}" wx:key="id">
+      <view class="box-top">单号：{{item.order_number}}
+        <view class="copy" bindtap="copyTap" data-no="{{item.order_number}}">复制</view>
+      </view>
+      <view class="box-center">
+        <view class="box-center-left">
+          <view class="title">{{item.type_content.title}}</view>
+          <view class="details">{{item.type_content.details}}</view>
+          <view class="date">{{item.created_at}}</view>
+        </view>
+        <view class="box-center-right">
+          <l-price unit="￥" value="{{item.order_pay_price}}" autofix reserve-digit="1" value-color="#333333"
+            value-size="68" unit-color="#333333" unit-size="32">
+          </l-price>
+          <view class="price-text">实际支付</view>
+        </view>
+      </view>
+      <view class="box-bottom" wx:if="{{item.order_type != 1}}">
+        <view class="see-posts" bindtap="toPostsDetail" data-id="{{item.posts_id}}">
+          <image src="/image/tabbar/tab_index_active.png"></image>查看动态
+        </view>
+      </view>
+    </view>
+    <l-loadmore show="{{loadmore}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+      line="{{false}}" color="#949494" />
+  </view>
+  <view wx:else class="empty-view">
+    <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Filing%20system-pana.png" title="空">
+    </empty-view>
+  </view>
+</l-skeleton>

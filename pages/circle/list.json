@@ -1,0 +1,20 @@
+{
+  "navigationBarTextStyle": "white",
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 50,
+  "usingComponents": {
+    "navBar": "../../components/navbar/navbar",
+    "mp-html": "/components/mp-weixin/index",
+    "l-sticky": "/linui/sticky/index",
+    "l-sticky-item": "/linui/sticky-item/index",
+    "poster": "../../components/poster/poster/index",
+    "l-loadmore": "/linui/loadmore/index",
+    "imageload": "/linui/image-loader/image-loader",
+    "l-popup": "/linui/popup/index",
+    "l-price": "/linui/price/index",
+    "l-skeleton": "/linui/skeleton/index",
+    "l-icon": "/linui/icon/index",
+    "empty-view": "/linui/empty-view/empty-view"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "赞和收藏",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "empty-view": "/linui/empty-view/empty-view",
+    "mp-html": "/components/mp-weixin/index"
+  }
+}

@@ -1,0 +1,126 @@
+<wxs module="filters" src="../../utils/fixed.wxs"></wxs>
+<l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+  l-class="topic-skeleton">
+  <block wx:if="{{posts.length > 0}}">
+    <view class="topic-detail-view" wx:for="{{posts}}" wx:key="index">
+      <view class="topic-panel" id="media_{{item.id}}">
+        <view class="user-info-view">
+          <navigator class="user-avatar-view" hover-class="none" url="/pages/user/user?id={{item.user.id}}">
+            <image class="user-avatar-image" compression="avatar" mode="aspectFill" src="{{item.user.user_avatar}}">
+            </image>
+            <view class="user-view">
+              <view class="user-name">
+                <text class="user-nick-text">{{item.user.user_name}}</text>
+                <image mode wx:if="{{item.user.is_official == 1}}" class="header-label" src="/image/official.png" />
+                <image mode wx:if="{{item.user.is_authentication == 1}}" class="header-label"
+                  src="/image/authentication.png" />
+                <image mode wx:if="{{item.user.is_member == 1}}" class="header-label" src="/image/vip.png" />
+              </view>
+            </view>
+          </navigator>
+          <view class="user-rigth">
+            <block wx:if="{{!item.is_my_posts}}">
+              <view catchtap="postsActionFollow" data-userid="{{item.user.id}}" data-index="{{index}}"
+                class="follow-view" wx:if="{{!item.is_follow_user}}">关注</view>
+              <image catchtap="postsActionFollow" data-userid="{{item.user.id}}" data-index="{{index}}"
+                wx:elif="{{item.is_follow_user}}" class="follow-ygz" src="/image/live_personal_ic_adding@3x.png">
+              </image>
+            </block>
+            <image catchtap="editTap" data-ismyposts="{{item.is_my_posts}}" data-iscollect="{{item.is_collect}}"
+              data-index="{{index}}" class="follow-image" data-id="{{item.id}}" src="/image/more_black_icon_show.png">
+            </image>
+          </view>
+        </view>
+
+        <block wx:if="{{!item.is_delete}}">
+          <mp-html class="content-view {{item.is_content_beyond ?'ellipsis':'unellipsis'}}"
+            content="{{item.posts_content}}" />
+          <view class="content-view-unfold" wx:if="{{item.is_content_beyond}}" bindtap="unfoldTap"
+            data-id="{{item.id}}">
+            <view>...</view>
+            <view>展开</view>
+          </view>
+          <view wx:if="{{item.video==null && item.images.length>0}}" class="img-lists">
+            <block wx:if="{{item.images.length==1}}">
+              <view class="one-pictures-box">
+                <image catchtap="previewImgFunc" class="one-pictures" data-list="{{item.images}}"
+                  data-src="{{imgItem.img_url}}" mode="aspectFill" src="{{imgItem.img_url}}" wx:for="{{item.images}}"
+                  wx:for-item="imgItem" wx:key="index"></image>
+              </view>
+            </block>
+            <block wx:else>
+              <imageload catchtap="previewImgFunc" class="image-box {{item.images.length==4?'four-picture':''}}"
+                data-list="{{item.images}}" data-src="{{imgItem.img_url}}" mode="aspectFill" src="{{imgItem.img_url}}"
+                wx:for="{{item.images}}" wx:for-item="imgItem" wx:key="index" />
+            </block>
+          </view>
+          <view class="videomodel {{item.video.show_type == 0?'h-video':'w-video'}}"
+            wx:if="{{item.video!=null && item.video!=''}}">
+            <image bindtap="getVideoUrl" data-video="{{item.video.video_url}}" mode="aspectFill" class="video-image"
+              data-index="{{index}}" src="{{item.video.video_thumb_url}}"></image>
+            <view class="vide-icon-box" bindtap="getVideoUrl" data-video="{{item.video.video_url}}"
+              data-index="{{index}}">
+              <image src="/image/ic_video.png" class="vide-icon" />
+            </view>
+            <video wx:if="{{popupshow && index==indexvideo}}" class="video-image z-i4" unit-id="{{vutad}}"
+              controls="true" show-fullscreen-btn="true" enable-play-gesture="true" show-play-btn="true"
+              enable-progress-gesture="true" autoplay="true" loop="true" object-fit="contain"
+              src="{{item.video.video_url}}"></video>
+          </view>
+          <view class="format-time-view">{{item.format_time}}</view>
+          <scroll-view scrollX enableFlex="enable-flex" enhanced="enhanced" scrollWithAnimation="scroll-with-animation"
+            showScrollbar="{{false}}" class="address-tag-all-view">
+            <view bindtap='openmap' data-lat="{{item.address.latitude}}" data-lng="{{item.address.longitude}}"
+              data-name="{{item.address.address_detailed}}" class="address-view"
+              wx:if="{{item.address!=null && item.address!=''}}">
+              <image class="view-image" mode="widthFix" src="/image/loc_icon_show.png"></image>
+              <text class="view-text">{{item.address.address_detailed}}</text>
+            </view>
+            <view class="tag-view" catchtap="toTagesInfo" data-name="{{tag.tags_name}}" data-id="{{tag.id}}"
+              wx:if="{{item.tags.length > 0}}" wx:for="{{item.tags}}" wx:key="index" wx:for-item="tag">
+              <image class="view-image" src="/image/topic.png"></image>
+              <text class="view-text">{{tag.tags_name}}</text>
+            </view>
+            <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}">
+              <text>{{item.circle.circle_name}}</text>
+            </view>
+          </scroll-view>
+        </block>
+      </view>
+    </view>
+  </block>
+  <block wx:else>
+    <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif"
+      title="空" />
+  </block>
+</l-skeleton>
+
+<l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+  color="#949494" />
+
+<view catchtouchmove="touchmove" class="dialog {{showDialog?'dialog_show':''}}">
+  <view bindtap="onClickCancle" class="dialog_mask"></view>
+  <view class="dialog_container">
+    <view class="dialog_conent">
+      <view catchtap="passTap" data-isposts="0" class="select-item">通过</view>
+      <view catchtap="rejectedTap" data-isposts="1" class="delete-btn">驳回</view>
+      <view bindtap="onClickCancle" class="cancel-btn">取消</view>
+    </view>
+  </view>
+</view>
+
+<view catchtouchmove="touchmove" class="dialog {{isRejected?'dialog_show':''}}">
+  <view bindtap="onRejected" class="dialog_mask"></view>
+  <view class="dialog_container">
+    <view class="dialog_conent">
+      <view class="item">
+        <text class="item-title">驳回原因</text>
+        <textarea bindinput="onInputChange" class="item-area" data-type="{{2}}" maxlength="{{descMaxLength}}"
+          placeholder="请填写驳回原因" value="{{reject_msg}}"></textarea>
+        <text class="item-tip">{{descLength}}/{{descMaxLength}}</text>
+      </view>
+      <view catchtap="yesRejected" class="delete-btn" id="delete">确认驳回</view>
+      <view bindtap="onRejected" class="cancel-btn">取消</view>
+    </view>
+  </view>
+</view>

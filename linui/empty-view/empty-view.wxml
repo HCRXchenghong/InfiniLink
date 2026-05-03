@@ -1,0 +1,4 @@
+<view class="jz-empty-view-container">
+    <image mode="aspectFill" class="jz-empty-view-image" src="{{icon}}"></image>
+    <text class="jz-empty-view-text">{{title}}</text>
+</view>

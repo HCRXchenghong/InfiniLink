@@ -1,0 +1,101 @@
+<view class="block-top">
+  <view class="top-left">
+    <view class="title">总收益</view>
+    <view class="translation">Total revenue</view>
+    <l-price unit="￥" value="{{sumPrice}}" autofix reserve-digit="1" value-color="#000" value-size="88"
+      unit-color="#000" unit-size="48">
+    </l-price>
+  </view>
+  <view bindtap="withdrawalTap" class="top-right">提现</view>
+</view>
+<view class="block-center">
+  <view class="center-box" wx:for="{{withdrawal}}" wx:key="id">
+    <l-price unit="￥" autofix value="{{item.i}}" reserve-digit="1" value-color="#333" value-size="42" unit-color="#333"
+      unit-size="26">
+    </l-price>
+    <view class="add-date">{{item.n}}</view>
+  </view>
+</view>
+
+<l-sticky scrollTop="{{scrollTop}}" mode="css">
+  <l-sticky-item top="-1" l-header-sticky-class="header-sticky-class">
+    <view slot="header" class="nav">
+      <view bindtap="onHandleClick" class="tag-box" data-index="{{index}}" wx:for="{{tabData}}" wx:key="item">
+        <view class="taga-item {{swithBarIndex==index?'active':''}}" data-index="{{index}}">{{item}}</view>
+      </view>
+    </view>
+    <view slot="body" class="list-box">
+      <block wx:if="{{swithBarIndex==0}}">
+        <block wx:if="{{isExceptional}}">
+          <view class="chen-box" wx:for="{{exceptionalList}}" wx:key="id">
+            <view class="chen-box-conent">
+              <image bindtap="userTap" data-uid="{{item.user.id}}" mode="aspectFill" src="{{item.user.user_avatar}}" />
+              <view class="chen-box-text">
+                收到一笔「{{item.user.user_name}}」的打赏
+                <text>{{item.datetime}}</text>
+              </view>
+              <l-price unit="￥" value="{{item.exceptional_price}}" autofix reserve-digit="1" value-color="#333"
+                value-size="48" unit-color="#333" unit-size="38">
+              </l-price>
+            </view>
+            <view class="see-posts" bindtap="toPostsDetail" data-id="{{item.posts_id}}">
+              <image src="/image/tabbar/tab_index_active.png"></image>查看动态
+            </view>
+          </view>
+        </block>
+        <block wx:else>
+          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Business%20decisions-amico.png"
+            title="空">
+          </empty-view>
+        </block>
+      </block>
+      <block wx:if="{{swithBarIndex==1}}">
+        <l-steps direction="column" dot="{{true}}" color="#333">
+          <block wx:if="{{isWithdrawal}}">
+            <block wx:for="{{withdrawalList}}" wx:key="id">
+              <l-step title="{{item.state == 1?item.account_at:item.created_at}}">
+                <view class="describe-container" slot="describe">
+                  <l-price unit="￥" value="{{item.price}}" autofix reserve-digit="1" value-color="#333" value-size="68"
+                    unit-color="#333" unit-size="32">
+                  </l-price>
+                  <view class="status">{{item.status_value}}</view>
+                </view>
+              </l-step>
+            </block>
+          </block>
+          <block wx:else>
+            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Business%20decisions-amico.png"
+              title="空">
+            </empty-view>
+          </block>
+        </l-steps>
+      </block>
+    </view>
+  </l-sticky-item>
+</l-sticky>
+
+<l-popup show="{{withdrawalPopup}}" bind:lintap="withdrawalTap" animation="true" z-index="99">
+  <view class="withdrawal-add-box">
+    <image class="withdrawal-add-box-image"
+      src="http://127.0.0.1/storage/wxprogram/image/Wallet-cuate.png" mode="aspectFill" />
+    <view class="withdrawal-add-box-view">
+      <view class="{{index==idx?'bd':'' || item>withdrawalBalance?'hd':''}}" wx:for="{{withdrawalPrice}}" wx:key="id"
+        bindtap="{{item>withdrawalBalance?'notWithdrawal':'addwithdrawalPrice'}}" data-idx="{{index}}"
+        data-price="{{item}}">
+        ¥{{item}}
+      </view>
+    </view>
+    <view class="withdrawal-add-input-box">
+      <text>支行名称：</text>
+      <input class="withdrawal-add-input" bindinput="withdrawalbankName" value="{{bankName}}"
+        placeholder-class="withdrawal-add-input-phs" type="digit" placeholder="在这里输入支行名称" />
+    </view>
+    <view class="withdrawal-add-input-box">
+      <text>银行卡号：</text>
+      <input class="withdrawal-add-input" bindinput="withdrawalbankId" value="{{bankId}}"
+        placeholder-class="withdrawal-add-input-phs" type="digit" placeholder="在这里输入银行卡号" />
+    </view>
+    <view class="withdrawal-add-box-btn" bindtap="withdrawalPay">确认提现</view>
+    <view class="details">注：由于微信给商家的统一费率为0.6%，提现默认到账金额将会扣除0.6%费率（最低0.60）</view>
+  </view>
+</l-popup>

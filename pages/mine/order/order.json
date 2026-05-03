@@ -1,0 +1,10 @@
+{
+  "navigationBarBackgroundColor": "#f5f5f5",
+  "navigationBarTitleText": "我的订单",
+  "usingComponents": {
+    "l-price": "/linui/price/index",
+    "l-loadmore": "/linui/loadmore/index",
+    "l-skeleton": "/linui/skeleton/index",
+    "empty-view": "/linui/empty-view/empty-view"
+  }
+}

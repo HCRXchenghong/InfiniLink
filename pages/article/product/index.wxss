@@ -1,0 +1,65 @@
+.shop-box {
+  width: 320rpx;
+}
+
+.shop-box-cover {
+  width: 100%;
+  border-radius: 16rpx;
+  animation: fadeIn 1s ease;
+}
+
+.shop-box-title {
+  color: #333333;
+  font-size: 26rpx;
+  font-weight: 550;
+  margin: 15rpx 10rpx;
+  line-height: 40rpx;
+  display: -webkit-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.shop-box .df-box {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 60rpx;
+}
+
+.df-box .df-box-comt {
+  width: 160rpx;
+  display: flex;
+  align-items: center;
+  color: #949494;
+  font-size: 24rpx;
+  font-weight: 350;
+}
+
+.jc {
+  justify-content: flex-end;
+}
+
+.head-portrait {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  margin-right: 15rpx;
+}
+
+.shop-box-name {
+  width: calc(100% - 55rpx);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  width: 38rpx;
+  height: 38rpx;
+  margin-left: 15rpx;
+}

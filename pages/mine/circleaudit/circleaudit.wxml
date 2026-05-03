@@ -1,0 +1,30 @@
+<view class="container">
+  <scroll-view scrollY class="right-items" scrollTop="{{scrollTop}}">
+    <view class="loading" wx:if="{{subcatsloading}}">
+      <image mode="aspectFit" src="/image/load.gif"></image>
+    </view>
+    <view class="area-club" wx:for="{{subcats}}" wx:key="index"
+      wx:if="{{subcats.length>0&&!subcatsloading}}">
+      <image class="image" mode="aspectFill" src="{{item.head_portrait}}"></image>
+      <view class="area-club-info">
+        <view class="area-club-name">{{item.circle_name}}</view>
+        <view class="area-club-creater">
+          <view class="area-club-creater" style="color:#333">
+            <text>{{item.post_count}}条动态</text>
+            <view class="shu"></view>
+            <text>{{item.user_circle_count}}人讨论</text>
+          </view>
+        </view>
+        <view class="mt-6">简介：{{item.circle_introduce}}</view>
+      </view>
+      <view class="editor-box">
+        <view class="btn k" bindtap="toEditor" data-id="{{item.id}}">编辑</view>
+        <view class="btn s" bindtap="toStick" data-id="{{item.id}}">审贴</view>
+      </view>
+    </view>
+    <view class="empty-view" wx:if="{{subcats!=null&&subcats.length==0&&!subcatsloading}}">
+      <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="还没有创建圈子呢">
+      </empty-view>
+    </view>
+  </scroll-view>
+</view>

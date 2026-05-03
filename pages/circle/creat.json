@@ -1,0 +1,8 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "l-notice-bar": "/linui/notice-bar/index",
+    "l-image-clipper": "/linui/image-clipper/index",
+    "l-image-clipper-tools": "/linui/image-clipper-tools/index"
+  }
+}

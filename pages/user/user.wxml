@@ -1,0 +1,110 @@
+<wxs module="filters" src="../../utils/fixed.wxs"></wxs>
+<import src="/pages/template/circle.wxml" />
+<navBar back="{{true}}" iconTheme="{{iconTheme}}" background="rgba(255, 255, 255, {{navbarTrans}})"
+  color="rgba({{color}}, {{navbarTrans}})" title="{{userInfo.user_name}}">
+</navBar>
+<view class="user-background">
+  <image class="bac-image" compression="content" mode="aspectFill" src="{{userInfo.user_background_maps}}">
+  </image>
+  <view class="gradient"></view>
+  <view class="own-header">
+    <view class="header-top">
+      <image mode class="own-header-img" bindtap="onPreviewImage" data-src="{{userInfo.user_avatar}}" lazyLoad="true"
+        src="{{userInfo.user_avatar}}"></image>
+      <view class="header-middle"><text class="name-text">{{userInfo.user_name}}</text>
+        <image wx:if="{{userInfo.is_official == 1}}" data-type="0" bindtap="popupShowTap" class="header-labels"
+          src="/image/official.png">
+        </image>
+        <image wx:if="{{userInfo.is_authentication == 1}}" data-type="1" bindtap="popupShowTap" class="header-labels"
+          src="/image/authentication.png">
+        </image>
+        <image wx:if="{{userInfo.is_member == 1}}" data-type="2" bindtap="popupShowTap" class="header-labels"
+          src="/image/vip.png">
+        </image>
+      </view>
+      <view class="header-abstract" wx:if="{{userInfo.user_introduce!=null&&userInfo.user_introduce!=''}}">
+        {{userInfo.user_introduce}}</view>
+    </view>
+    <view class="header-bottom">
+      <view class="header-zuo">
+        <navigator class="header-bottom-li" hover-class="none" url="/pages/mine/follow/follow?id=0&userid={{userId}}">
+          <view class="own-header-num">
+            {{userInfo.followTotal>999?filters.toFix(userInfo.followTotal):userInfo.followTotal}}</view>
+          <view class="own-header-text">关注</view>
+        </navigator>
+        <navigator class="header-bottom-li" hover-class="none" url="/pages/mine/follow/follow?id=1&userid={{userId}}">
+          <view class="own-header-num">
+            {{userInfo.fansTotal>999?filters.toFix(userInfo.fansTotal):userInfo.fansTotal}}
+          </view>
+          <view class="own-header-text">粉丝</view>
+        </navigator>
+        <view class="header-bottom-li" data-type="3" bindtap="popupShowTap">
+          <view class="own-header-num">
+            {{userInfo.likeTotal>999?filters.toFix(userInfo.likeTotal):userInfo.likeTotal}}</view>
+          <view class="own-header-text">获赞</view>
+        </view>
+      </view>
+      <block wx:if="{{!userInfo.isFollow}}">
+        <view class="header-right-box">
+          <view bindtap="userInfoActionFollow" data-userid="{{userId}}" class="header-box header-right">关注
+          </view>
+          <navigator url="/pages/message/detail/detail?userid={{userId}}&name={{userInfo.user_name}}"
+            class="header-box header-setup">
+            <image style="width: 38rpx;height: 38rpx;" src="/image/chat.png"></image>
+          </navigator>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="header-right-box">
+          <navigator url="/pages/message/detail/detail?userid={{userId}}&name={{userInfo.user_name}}"
+            class="header-box header-right">
+            发消息
+          </navigator>
+          <view bindtap="userInfoActionFollow" data-userid="{{userId}}" class="header-box header-setup">
+            <image style="width: 32rpx;height: 32rpx;" src="/image/following.png"></image>
+          </view>
+        </view>
+      </block>
+    </view>
+  </view>
+</view>
+<view class="tab-list" id="tabList">
+  <view class="home-recommend">
+    <text>{{total}}</text>篇内容
+  </view>
+  <view slot="content" style="margin-top:30rpx">
+    <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx"
+      rows-height="{{['100rpx','240rpx','80rpx']}}" avatar-shape="circle" l-class="topic-skeleton">
+      <block wx:if="{{posts.length > 0}}">
+        <template is="circle"
+          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+      </block>
+      <block wx:else>
+        <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空">
+        </empty-view>
+      </block>
+    </l-skeleton>
+    <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+      color="#949494" />
+  </view>
+</view>
+<!-- 生成海报组件 -->
+<poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
+  bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>
+
+<l-popup show="{{imageShow}}" bind:lintap="popupShowTap">
+  <image bindtap='popupShowTap' wx:if="{{typeShow == 0}}" class="vip-img" src="{{configData.official_popup_poster}}"
+    mode="aspectFill">
+  </image>
+  <image bindtap='popupShowTap' wx:if="{{typeShow == 1}}" class="vip-img"
+    src="{{configData.authentication_popup_poster}}" mode="aspectFill">
+  </image>
+  <image bindtap='popupShowTap' wx:if="{{typeShow == 2}}" class="vip-img" src="{{configData.members_popup_poster}}"
+    mode="aspectFill">
+  </image>
+  <view wx:if="{{typeShow == 3}}" bindtap='popupShowTap' class="like-box">
+    <image src="http://127.0.0.1/storage/wxprogram/image/Appreciation-bro.png" mode="aspectFill" />
+    <text>{{userInfo.user_name}} 获赞数</text>
+    <view>{{userInfo.likeTotal}}</view>
+  </view>
+</l-popup>

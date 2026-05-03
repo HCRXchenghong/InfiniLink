@@ -1,0 +1,8 @@
+{
+  "navigationBarBackgroundColor": "#090808",
+  "navigationBarTitleText": "",
+  "navigationBarTextStyle": "white",
+  "usingComponents": {
+    "l-price": "/linui/price/index"
+  }
+}

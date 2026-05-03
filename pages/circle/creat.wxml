@@ -1,0 +1,80 @@
+<view class="container">
+    <l-notice-bar l-class="notice-bar" l-icon-class="notice-bar-icon" show="{{notice}}" close="{{true}}" type="roll"
+        speed="1500" front-icon-name="notification" end-icon-name="close" front-icon-size="32" front-icon-color="#fff"
+        end-icon-color="#fff">
+        {{tisi}}
+    </l-notice-bar>
+    <view class="content-container" style="padding-bottom: 100px;">
+        <view class="img-box">
+            <view class="logo-container w200" bindtap="clipperImage" data-type="imageAvatarClipper">
+                <block wx:if="{{imageAvatar==null}}">
+                    <image class="logo-add" src="/image/new_construction_circle_cover_upload_picture.png"></image>
+                    <view class="img-text">圈子头像</view>
+                </block>
+                <block wx:else>
+                    <image class="logo-image w200" mode="aspectFill" src="{{imageAvatar}}"></image>
+                    <image class="logo-camera" catchtap="delimage" data-name="imageAvatar"
+                        src="/image/icon_delete_buoy.png"></image>
+                </block>
+            </view>
+            <view class="logo-container w460" bindtap="clipperImage" data-type="imagesubjectClipper">
+                <block wx:if="{{imageSubject==null}}">
+                    <image class="logo-add" src="/image/new_construction_circle_cover_upload_picture.png"></image>
+                    <view class="img-text">圈子背景图</view>
+                </block>
+                <block wx:else>
+                    <image class="logo-image w460" mode="aspectFill" src="{{imageSubject}}"></image>
+                    <image class="logo-camera" catchtap="delimage" data-name="imageSubject"
+                        src="/image/icon_delete_buoy.png"></image>
+                </block>
+            </view>
+        </view>
+        <view class="item">
+            <text class="item-title">圈子名称</text>
+            <input bindinput="onInputChangeCircle" class="item-input" data-type="1" maxlength="{{nameMaxLength}}"
+                placeholder="请输入圈子名称" value="{{circleName}}"></input>
+            <text class="item-tip">{{nameLength}}/{{nameMaxLength}}</text>
+        </view>
+        <view class="item">
+            <text class="item-title">圈子简介</text>
+            <textarea bindinput="onInputChangeCircle" class="item-area" data-type="2" maxlength="{{descMaxLength}}"
+                placeholder="请输入圈子简介" value="{{circleDesc}}"></textarea>
+            <text class="item-tip">{{descLength}}/{{descMaxLength}}</text>
+        </view>
+        <view class="item-h">
+            <text class="item-title">选择圈子所属板块</text>
+            <picker bindchange="bindPickerChange" value="{{index}}" range="{{cats}}" range-key="plate_name">
+                <view class="picker">
+                    {{cats[index].plate_name}}
+                    <view class="arrow"></view>
+                </view>
+            </picker>
+        </view>
+        <text
+            class="bottom-tip-text">请认真仔细阅读《圈主协议》，若所见圈子内涉及时政，色情，暴力，无资质荐股，推币等违法内容传播，轻航将立即永久封停圈子和账号，请各用户自觉遵守国家法律和平台规则。</text>
+    </view>
+    <view class="bottom-box">
+        <view class="bottom">
+            <image bindtap="onProtocolChange" class="bottom-radio"
+                src="{{protocolChecked?'/image/icon_agree_protocol_pressed.png':'/image/icon_agree_protocol_default.png'}}">
+            </image>
+            <text class="bottom-radio-text" style="{{protocolChecked?'color: #333':''}}">我已阅读并同意</text>
+            <text bindtap="onProtocolClick" class="bottom-radio-text" style="color: #333">《圈主协议》 </text>
+            <text bindtap="creatCircle" class="bottom-button">确定</text>
+        </view>
+    </view>
+</view>
+
+<block wx:if="{{imageAvatarClipper}}">
+    <l-image-clipper width="550" height="550" show="true" image-url="{{pic}}" data-name="imageAvatar"
+        data-type="imageAvatarClipper" bind:linclip="addimage">
+        <l-image-clipper-tools />
+    </l-image-clipper>
+</block>
+
+<block wx:if="{{imagesubjectClipper}}">
+    <l-image-clipper width="750" height="350" show="true" image-url="{{pic}}" data-name="imageSubject"
+        data-type="imagesubjectClipper" bind:linclip="addimage">
+        <l-image-clipper-tools />
+    </l-image-clipper>
+</block>

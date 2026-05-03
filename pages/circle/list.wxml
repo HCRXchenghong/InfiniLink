@@ -1,0 +1,108 @@
+<wxs module="filters" src="../../utils/fixed.wxs"></wxs>
+<import src="/pages/template/circle.wxml" />
+<navBar back="{{true}}" iconTheme="{{iconTheme}}" background="rgba(255, 255, 255, {{navbarTrans}})"
+  color="rgba({{color}}, {{navbarTrans}})" title="{{circleInfo.circle_name}}">
+</navBar>
+<view class="container">
+  <image class="banner_image" mode="aspectFill" src="{{circleInfo.background_maps}}"></image>
+  <view class="banner_image_mask" bindtap="onPreviewImage" data-src="{{circleInfo.background_maps}}"></view>
+  <view class="dynamic">
+    <view class="dynamic_top">
+      <image bindtap="onPreviewImage" data-src="{{circleInfo.head_portrait}}" src="{{circleInfo.head_portrait}}"
+        mode="aspectFill"></image>
+      <view class="banner_container_bottom">
+        <view class="banner_container_bottom_option">
+          <text>{{circleInfo.circle_posts_count>999?filters.toFix(circleInfo.circle_posts_count):circleInfo.circle_posts_count}}条动态</text>
+          <view class="banner_container_bottom_s"></view>
+          <text>{{circleInfo.circle_follow_count>999?filters.toFix(circleInfo.circle_follow_count):circleInfo.circle_follow_count}}人关注</text>
+        </view>
+        <view bindtap="quitCircle" data-id="{{circleInfo.id}}" class="banner_container_bottom_right yg"
+          wx:if="{{circleInfo.is_follow_circle}}">已关注</view>
+        <view bindtap="quitCircle" data-id="{{circleInfo.id}}" class="banner_container_bottom_right" wx:else>关注
+        </view>
+      </view>
+    </view>
+    <view class="banner_container">
+      <view class="banner_container_topic">{{circleInfo.circle_name}}</view>
+      <view class="dynamic_Introducer-jianjie">简介</view>
+      <view class="dynamic_Introducer-content" style="width: {{downWidth}}rpx;-webkit-line-clamp: {{down}}"
+        wx:if="{{circleInfo.circle_introduce!=null}}">
+        {{circleInfo.circle_introduce}}
+      </view>
+      <view bindtap="downTap" class="icon-class-box" wx:if="{{circleInfo.circle_introduce.length > 24 && isIntroduce}}">
+        <l-icon l-class="l-icon-class" name="down" size="26" />
+      </view>
+    </view>
+  </view>
+  <view class="circle-user">
+    <view class="circle-user-title">圈里有谁</view>
+    <scroll-view scrollX enableFlex="enable-flex" enhanced="enhanced" scrollWithAnimation="scroll-with-animation"
+      showScrollbar="{{false}}" class="user-list">
+      <view class="user-box" wx:for="{{circleUser}}" wx:key="id" data-uid="{{item.id}}" bindtap="userTap">
+        <image src="{{item.user_avatar}}"></image>
+        <view wx:if="{{item.id == circleInfo.user_id}}" class="qz">圈主</view>
+        <text wx:else>{{item.user_name}}</text>
+      </view>
+    </scroll-view>
+  </view>
+  <l-sticky scrollTop="{{scrollTop}}" mode="css">
+    <l-sticky-item top="{{customBar}}" l-header-sticky-class="header-sticky-class">
+      <view slot="header" class="nav">
+        <view bindtap="onHandleClick" class="tag-box" data-index="{{index}}" wx:for="{{tabData}}" wx:key="item">
+          <view class="taga-item {{swithBarIndex==index?'active':''}}" data-index="{{index}}">{{item}}</view>
+        </view>
+      </view>
+
+      <view slot="body" class="body-box">
+        <view class="pd-btm">
+          <view slot="content">
+            <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+              rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
+              <template is="circle"
+                data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+              <empty-view wx:if="{{isNul}}" class="empty-view"
+                icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空" />
+            </l-skeleton>
+            <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text=""
+              size="28" color="#949494" />
+          </view>
+        </view>
+      </view>
+    </l-sticky-item>
+  </l-sticky>
+</view>
+
+<view class="add-topic-post">
+  <view class="add-post-ctrl {{showmenu?'add-post-animation':'add-post-animation2'}}">
+    <view catchtap="plusClickAction">
+      <image mode="aspectFill" src="/image/float_add.png"></image>
+    </view>
+  </view>
+</view>
+<view class="add-topic-post-btn">
+  <view class="add-topic-post-option {{showmenu?'add-option-animation':'add-option-animation2'}}">
+    <view class="add-post-icon-box {{showmenu?'add-option-animation-drift':'add-option-animation-drift2'}}">
+      <view catchtap="gotoPost" data-id="{{circleInfo.id}}" data-name="{{circleInfo.circle_name}}"
+        class="add-post-icon">
+        <image mode="aspectFill" src="/image/image-line.png"></image>
+        <text>发图文</text>
+      </view>
+      <view class="add-post-icon-center">
+        <view>
+          <image mode="aspectFill" src="/image/float_btn.png"></image>
+        </view>
+      </view>
+      <view catchtap="gotoPost" data-id="{{circleInfo.id}}" data-name="{{circleInfo.circle_name}}"
+        class="add-post-icon">
+        <image mode="aspectFill" src="/image/live-line.png"></image>
+        <text>发视频</text>
+      </view>
+    </view>
+  </view>
+</view>
+<view bindtap="refreshEvent" class="refresh">
+  <image src="/image/refresh-line.png" />
+</view>
+<!-- 生成海报组件 -->
+<poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
+  bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>

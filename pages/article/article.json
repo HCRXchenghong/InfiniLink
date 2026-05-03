@@ -1,0 +1,14 @@
+{
+  "navigationBarTitleText": "标签",
+  "usingComponents": {
+    "product": "./product/index",
+    "l-water-flow": "/linui/water-flow/index",
+    "mp-html": "/components/mp-weixin/index",
+    "empty-view": "/linui/empty-view/empty-view",
+    "l-collapse": "/linui/collapse/index",
+    "l-collapse-item": "/linui/collapse-item/index",
+    "l-icon": "/linui/icon/index",
+    "l-skeleton": "/linui/skeleton/index",
+    "l-loadmore": "/linui/loadmore/index"
+  }
+}

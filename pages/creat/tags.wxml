@@ -1,0 +1,36 @@
+<view class="container" style="padding-bottom:200rpx">
+    <view class="searchBar">
+        <view class="tit_seabox_bar">
+            <input bindconfirm="searchTag" placeholder="请添加标签" placeholderStyle="color: #ccc;" type="text"
+                bindinput="addtag" value="{{searchStr}}"></input>
+            <icon bindtap="activityClear" size="28rpx" type="clear" wx:if="{{searchStr}}"></icon>
+        </view>
+        <view bindtap="searchTag" class="activity_seabtn">添加</view>
+    </view>
+    <view class="no_topic" data-select="false">
+        推荐标签
+    </view>
+    <view bindtap="addTags" data-name="{{item.tags_name}}" data-id="{{item.id}}" class="topic" wx:for="{{tags}}"
+        wx:key="item">
+        <view class="main">
+            <image class="tag-image" src="/image/topic.png"></image>{{item.tags_name}}
+        </view>
+        <view class="sub">{{item.tags_number}} 篇动态</view>
+    </view>
+    <view class="noData" wx:if="{{!isNull}}">
+        <image class="noData-img" mode="aspectFill"
+            src="http://127.0.0.1/storage/wxprogram/image/Social%20media-rafiki.png"></image>
+        <view class="noDataTxt">空</view>
+    </view>
+</view>
+
+<view class="btnbottom">
+    <view class="address-tag-all-view">
+        <view bindtap="gotoTags" data-name="{{tag.tags_name}}" class="tag-view" wx:for="{{userSelectedTags}}"
+            wx:key="index" wx:for-item="tag">
+            <text class="tag-text"># {{tag.tags_name}}</text>
+            <image bindtap="removeTag" data-id="{{tag.id}}" class="audio-delete" src="/image/del_biaoq.png"></image>
+        </view>
+    </view>
+    <button bindtap="save" class="issue" hoverClass="primary-button-hover" type="primaryOrange">确定</button>
+</view>

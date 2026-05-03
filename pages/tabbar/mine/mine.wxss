@@ -1,0 +1,275 @@
+@import "/pages/template/circle.wxss";
+
+.user-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.user-background .banner {
+  width: 100%;
+  height: 650rpx;
+  animation: fadeIn 0.6s ease;
+}
+
+.user-background .gradient {
+  position: absolute;
+  height: 650rpx;
+  width: 100%;
+  left: 0;
+  bottom: 0;
+  background-image: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.6));
+}
+
+.own-header {
+  position: absolute;
+  left: 30rpx;
+  bottom: 60rpx;
+  display: flex;
+  justify-content: center;
+  flex-flow: column nowrap;
+}
+
+.header-top {
+  width: 720rpx;
+  height: 280rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.own-header-img-div,
+.own-header-img {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 120rpx;
+  border: 5rpx solid #fff;
+}
+
+.own-header-img-div {
+  border: none;
+}
+
+.header-middle {
+  margin-top: 38rpx;
+  color: #fff;
+  font-size: 34rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.name-text {
+  max-width: 550rpx;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.header-abstract {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  font-weight: 400;
+  color: #fff;
+  width: 600rpx;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.header-labels {
+  width: 32rpx;
+  height: 32rpx;
+  margin-left: 12rpx;
+}
+
+.header-bottom {
+  width: 100%;
+  height: 100rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-zuo {
+  width: 350rpx;
+  height: 100rpx;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.header-bottom-li {
+  -webkit-box-flex: 1;
+  flex: 1;
+}
+
+.own-header-num {
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 50rpx;
+}
+
+.own-header-text {
+  color: #fff;
+  font-size: 20rpx;
+}
+
+.header-right-box {
+  position: absolute;
+  bottom: 30rpx;
+  right: 30rpx;
+  display: flex;
+  align-items: center;
+}
+
+.header-box {
+  height: 50rpx;
+  border-radius: 500rpx;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.header-right {
+  width: 160rpx;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.header-setup {
+  width: 80rpx;
+  margin-left: 24rpx;
+}
+
+.header-setup image {
+  width: 42rpx;
+  height: 42rpx;
+}
+
+.tools {
+  background: #fff;
+  border-radius: 30rpx 30rpx 0 0;
+  position: absolute;
+  top: 620rpx;
+  left: 0;
+  width: 100%;
+}
+
+.header-sticky-class {
+  box-sizing: border-box !important;
+  z-index: 99 !important;
+  border-radius: none !important;
+}
+
+.nav {
+  width: 100%;
+  height: 90rpx;
+  display: flex;
+  font-size: 30rpx;
+  justify-content: center;
+  line-height: 90rpx;
+  background: #FFF;
+  border-radius: 30rpx 30rpx 0 0;
+}
+
+.tag-box {
+  padding: 0 30rpx;
+}
+
+.taga-item {
+  font-size: 30rpx;
+  color: #949494;
+  font-weight: 450;
+}
+
+.tag-box .active {
+  color: #333333 !important;
+  font-weight: bold !important;
+  position: relative;
+}
+
+.tag-box .active:after {
+  content: "";
+  display: block;
+  width: 16rpx;
+  height: 6rpx;
+  background: #333333;
+  border-radius: 6rpx;
+  position: absolute;
+  bottom: 10rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all .4s ease;
+}
+
+.body-box {
+  width: 100%;
+  margin: 0 auto 100px;
+}
+
+.empty-box {
+  margin-top: 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bon-box {
+  margin-top: 20rpx;
+  width: 200rpx;
+  height: 75rpx;
+  background: #333333;
+  border-radius: 10rpx;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 450;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vip-img {
+  width: 500rpx;
+  height: 500rpx;
+}
+
+.like-box {
+  width: 500rpx;
+  height: 380rpx;
+  background: #fff;
+  border-radius: 30rpx;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  position: relative;
+}
+
+.like-box image {
+  position: absolute;
+  top: -120rpx;
+  width: 400rpx;
+  height: 400rpx;
+  animation: fadeIn 0.1s ease;
+}
+
+.like-box view {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #333;
+  height: 90rpx;
+}
+
+.like-box text {
+  font-size: 26rpx;
+  color: #949494;
+  height: 45rpx;
+  max-width: 450rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,10 @@
+<view class="contain">
+  <view class="logo-box">
+    <image src="{{configData.about_logo}}" class="img" />
+    <view class="logosub">PC端登录确认</view>
+  </view>
+  <view class="login_bg">
+    <button loading="{{btnState}}" class="btn" bindtap="toPcLogin">登录</button>
+    <view bindtap="back" class="btn2">取消</view>
+  </view>
+</view>

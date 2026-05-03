@@ -1,0 +1,20 @@
+.jz-empty-view-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.jz-empty-view-image {
+    margin-top: 30rpx;
+    width: 300rpx;
+    height: 300rpx;
+    animation: fadeIn 0.6s ease;
+}
+
+.jz-empty-view-text {
+    font-size: 28rpx;
+    color: #333;
+    margin-top: 20rpx;
+}

@@ -1,0 +1,38 @@
+<view class="content-container">
+  <view class="item-container" wx:for="{{messages}}" wx:key="index">
+    <view class="item" style="flex-direction: {{item.object_id==oid?'row-reverse':'row'}}">
+      <image class="item-left" bindtap="userTap" data-uid="{{item.user.id}}" wx:if="{{item.object_id!=oid}}"
+        mode="aspectFill" src="{{item.user.user_avatar}}">
+      </image>
+      <view class="item-right {{item.object_id==oid?'item-right-me':''}}">
+        <view class="item-right-text-container {{item.object_id==oid?'item-right-text-container-me':''}}">
+          <image class="item-right-arrow" src="/image/pic_white_arrow.png"
+            wx:if="{{item.object_id!=oid && !item.chat_image}}">
+          </image>
+          <image wx:if="{{item.chat_image}}" catchtap="previewImgFunc" data-list="{{item.imgList}}"
+            data-src="{{item.chat_image}}" mode="aspectFill" class="item-right-image" src="{{item.chat_image}}">
+          </image>
+          <mp-html wx:else class="item-right-text {{item.object_id==oid?'item-right-text-me':''}}"
+            content="{{item.chat_content}}" />
+          <image class="item-right-arrow-me" src="/image/pic_blue_arrow.png"
+            wx:if="{{item.object_id==oid && !item.chat_image}}">
+          </image>
+        </view>
+        <text class="item-date">{{item.datetime}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view catchtouchmove="stopTouch" class="jz-chat-edit-view-container">
+  <view class="jz-chat-edit-view-box">
+    <input bindfocus="onInputFocus" bindinput="onInputChange" class="jz-chat-edit-view-input" cursorSpacing="16rpx"
+      maxlength="1000" value="{{chat_content}}"></input>
+    <view class="jz-chat-edit-view-bottom-left" bindtap="toAddChatImage">
+      <image class="jz-chat-edit-view-img" src="/image/image-line-add.png"></image>
+    </view>
+    <view class="jz-chat-edit-view-bottom">
+      <text bindtap="toAddChat" class="jz-chat-edit-view-confirm">发送</text>
+    </view>
+  </view>
+</view>

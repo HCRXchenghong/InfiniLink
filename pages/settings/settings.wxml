@@ -1,0 +1,32 @@
+<view class="box">
+  <l-list title="收益" left-gap="6" l-class="l-list bb" desc="致富之路" image="/image/settings/wallet-line.png"
+    link-type="navigateTo" url="/pages/mine/earnings/earnings" />
+  <l-list title="订单" left-gap="6" l-class="l-list" desc="被安利的好东西，消费记录都在这里"
+    image="/image/settings/shopping-bag-3-line.png" link-type="navigateTo" url="/pages/mine/order/order" />
+  <l-list title="认证" left-gap="6" l-class="l-list bb" desc="认证身份，获得勋章" image="/image/settings/medal-line.png"
+    link-type="navigateTo" url="/pages/mine/certification/certification" />
+  <l-list title="圈子" left-gap="6" l-class="l-list bb" desc="管理我的圈子" image="/image/tabbar/tab_nearby_active.png"
+    link-type="navigateTo" url="/pages/mine/circleaudit/circleaudit" />
+  <!-- <button open-type="contact" class="btn-list">
+    <view class="btn-box">
+      <image src="/image/settings/customer-service-line.png" />
+      在线客服
+    </view>
+    <l-icon size="26" name="right" color="#8c98ae" />
+  </button> -->
+  <l-list title="我要反馈" desc="给轻航提个意见或建议吧" left-gap="6" l-class="l-list" image="/image/settings/draft-line.png"
+    link-type="navigateTo" url="/pages/mine/feedback/feedback" />
+  <l-list title="隐私政策" left-gap="6" l-class="l-list bb" image="/image/settings/list-unordered.png"
+    link-type="navigateTo" url="/pages/clause/clause?type=22" />
+  <l-list title="用户协议" left-gap="6" l-class="l-list bb" image="/image/settings/file-list-2-line.png"
+    link-type="navigateTo" url="/pages/clause/clause?type=21" />
+  <l-list title="打赏声明" left-gap="6" l-class="l-list bb" image="/image/settings/money-cny-box-line.png"
+    link-type="navigateTo" url="/pages/clause/clause?type=24" />
+  <l-list title="免责声明" left-gap="6" l-class="l-list bb" image="/image/settings/file-text-line.png"
+    link-type="navigateTo" url="/pages/clause/clause?type=23" />
+  <l-list title="关于轻航" left-gap="6" l-class="l-list bb" image="/image/settings/error-warning-line.png"
+    link-type="navigateTo" url="/pages/mine/about/about" />
+  <l-list title="清除缓存" left-gap="6" bind:lintap="handlerClearCache" l-class="l-list bb"
+    image="/image/settings/delete-bin-4-line.png" />
+  <view class="box-btn" bindtap="shutLogin">退出登录</view>
+</view>

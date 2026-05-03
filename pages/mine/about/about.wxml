@@ -1,0 +1,10 @@
+<view class="box">
+  <image src="{{configData.about_logo}}" class="img">
+  </image>
+  <view class="version">Version 1.2.8</view>
+  <view class="box-content">{{configData.about_title}}</view>
+  <view class="copyright-information">{{configData.about_copyright}}</view>
+  <view class="account">
+    <official-account style="width:300px;height:84px;"></official-account>
+  </view>
+</view>

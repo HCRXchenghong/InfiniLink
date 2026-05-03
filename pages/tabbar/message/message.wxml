@@ -1,0 +1,58 @@
+<button bindtap="onMenuItem" class="dialog-item" data-url="{{item.url}}" hoverClass="hover" wx:for="{{messageQHList}}"
+  wx:key="index">
+  <view class="item-head">
+    <image class="icon" lazyLoad="{{true}}" mode="aspectFill" src="{{item.img}}"></image>
+  </view>
+  <view class="item-body">
+    <view class="info">
+      <view class="name"> {{item.title}}</view>
+      <view class="time" wx:if="{{item.date != '52年前'}}">{{item.date}}</view>
+    </view>
+    <view class="content">
+      <mp-html content="{{item.content}}" class="desc" />
+      <view class="red-dot" wx:if="{{item.count>0}}">{{item.count}}</view>
+    </view>
+  </view>
+</button>
+<button open-type="contact" class="dialog-item">
+  <view class="item-head">
+    <image class="icon" lazyLoad="{{true}}" mode="aspectFill" src="/image/logo-icon.png"></image>
+  </view>
+  <view class="item-body">
+    <view class="info">
+      <view class="name">轻航（官方客服）</view>
+    </view>
+    <view class="content">
+      <view class="desc">实时在线</view>
+    </view>
+  </view>
+</button>
+<view class="dialog-list">
+  <block wx:for="{{messageList}}" wx:key="index">
+    <l-slide-view height="140" width="750" slide-width="140" close="{{close}}">
+      <navigator slot="left" url="/pages/message/detail/detail?userid={{item.user.id}}&name={{item.user.user_name}}"
+        hoverClass="hover" class="dialog-item">
+        <view class="item-head">
+          <image class="icon" lazyLoad="{{true}}" mode="aspectFill" src="{{item.user.user_avatar}}"></image>
+        </view>
+        <view class="item-body">
+          <view class="info">
+            <view class="name">{{item.user.user_name}}</view>
+            <view class="time">{{item.datetime}}</view>
+          </view>
+          <view class="content">
+            <mp-html wx:if="{{item.read == '' || item.read == null}}" content="{{item.chat_content||'[动画表情]'}}"
+              class="desc" />
+            <rmp-html wx:else content="{{item.read.chat_content||'[动画表情]'}}" class="desc" />
+            <view class="red-dot" wx:if="{{item.read_count > 0 && item.user.id != userInfo.id}}">{{item.read_count}}
+            </view>
+          </view>
+        </view>
+      </navigator>
+      <view slot="right" class="right" data-uid="{{item.user.id}}" bindtap="delMessage">
+        <text>删除</text>
+      </view>
+    </l-slide-view>
+  </block>
+</view>
+

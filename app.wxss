@@ -1,0 +1,52 @@
+button::after {
+  border-radius: 0;
+  border: none;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  color: transparent;
+}
+
+.lxy-nav-bar__logo {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-left: 28rpx;
+}
+
+.lxy-nav-bar__logo image {
+  height: 26px;
+  width: 26px;
+  border-radius: 26rpx;
+}
+
+.refresh {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: fixed;
+  z-index: 99;
+  right: 15px;
+  bottom: 70px;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 2px 24px 0 rgb(0 0 0 / 10%);
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+.refresh image {
+  height: 48rpx;
+  width: 48rpx;
+}
+
+.topic-skeleton {
+  padding: 0 30rpx;
+}
+
+.topic-list {
+  padding-bottom: env(safe-area-inset-bottom);
+}

@@ -1,0 +1,30 @@
+<view class="box">
+  <view class="box-top">
+    <view class="box-top-title">我的板块
+      <view class="des">随心所欲</view>
+    </view>
+    <view class="box-top-etn" bindtap="{{delSta==0?'bteTap':'yesTap'}}">{{delSta==0?'编辑':'完成'}}</view>
+  </view>
+  <view class="box-plate">
+    <view class="box-plate-coent {{delSta==0?'':'cor'}}" wx:for="{{defaultPlate}}" wx:key="dp">{{item}}
+    </view>
+    <view class="box-plate-coent" wx:for="{{header}}" wx:for-index="index" wx:key="id">
+      {{item.plate_name}}
+      <image bindtap="userPlateDelete" data-index="{{index}}" data-id="{{item.id}}" wx:if="{{delSta==1}}"
+        class="audio-img" src="/image/del_biaoq.png"></image>
+    </view>
+  </view>
+</view>
+<view class="box">
+  <view class="box-top">
+    <view class="box-top-title">全部板块
+      <view class="des">添加自己喜欢的</view>
+    </view>
+  </view>
+  <view class="box-plate">
+    <view class="box-plate-coent add" wx:for="{{cats}}" wx:key="index">{{item.plate_name}}
+      <image bindtap="userPlateAdd" data-id="{{item.id}}" data-name="{{item.plate_name}}" class="audio-img"
+        src="/image/add_plate.png"></image>
+    </view>
+  </view>
+</view>

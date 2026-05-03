@@ -1,0 +1,65 @@
+<import src="/pages/template/circle.wxml" />
+<navBar background="white" iconTheme="{{iconTheme}}" bindsearch="gotosearch" searchBar="{{true}}"
+  searchText="{{searchText}}">
+  <view bindtap="toShuiXing" slot="left" class='lxy-nav-bar__logo'>
+    <image src="/image/logo-icon.png" />
+  </view>
+</navBar>
+<view class="index-header" style="top:{{statusBarHeight+43}}px;">
+  <scroll-view scroll-x class="tab-view" scroll-left="{{scrollLeft}}">
+    <view wx:for="{{header}}" wx:key="ids" wx:for-index="index" class="tab-bar-item {{index==type ? 'active' : ''}}"
+      data-pid="{{item.plate_id}}" data-type="{{index}}" catchtap="check">
+      <text class="tab-bar-title">{{item.plate_name}}</text>
+    </view>
+  </scroll-view>
+  <view bindtap="moretags" class="tab-more">
+    <image src="/image/tabmorered.png"></image>
+  </view>
+</view>
+<view class="loading" style="margin-top:-15px;">
+  <image mode="aspectFit" src="/image/load.gif"></image>
+</view>
+<view class="topping" wx:if="{{type==2}}">
+  <view class="topping-article">
+    <l-skeleton loading="{{stickyload}}" rows="2" title="{{false}}" rows-width="{{['690rpx','690rpx']}}"
+      rows-height="{{['186rpx','186rpx']}}">
+      <view class="recoBox {{sticky.length==4?'rp4':sticky.length==5?'rp5':''}}" wx:if="{{sticky.length>0}}">
+        <view class="recommend" bindtap="more" data-id="{{item.id}}" data-index="{{index}}"
+          style="background:url({{item.imagea.img_url}}) center/cover no-repeat #f5f5f5;" wx:if="{{index<6}}"
+          wx:for="{{sticky}}" wx:key="index">
+          <rich-text class="recoTitle" nodes="#{{item.posts_content}}" />
+          <view class="linearMask {{index==0||index==2?'lm_1':index==3||index==5?'lm_2':'lm_3'}}"></view>
+        </view>
+      </view>
+    </l-skeleton>
+  </view>
+</view>
+<view class="topic-list">
+  <view slot="content" style="padding-bottom:100px">
+    <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+      rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
+      <block wx:if="{{posts.length > 0}}">
+        <template is="circle"
+          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+      </block>
+      <view wx:else class="empty-box" style="height: {{screenHeight}}px;">
+        <block wx:if="{{type==0}}">
+          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Astronaut.gif" title="干净清爽">
+          </empty-view>
+        </block>
+        <block wx:else>
+          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空">
+          </empty-view>
+        </block>
+      </view>
+    </l-skeleton>
+    <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+      color="#949494" />
+  </view>
+</view>
+<view bindtap="refreshEvent" class="refresh">
+  <image src="/image/refresh-line.png" />
+</view>
+<!-- 生成海报组件 -->
+<poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
+  bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>

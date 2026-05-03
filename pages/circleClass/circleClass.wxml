@@ -1,0 +1,122 @@
+<view class="container">
+  <view class="nav-box">
+    <view class="search-box">
+      <image class="icon" src="/image/search-line.png"></image>
+      <input focus="{{focusShow}}" bindconfirm="onSearchConfirm" bindinput="onSearchInput" class="input"
+        confirmType="search" name="keyword" placeholder="输入名称搜索圈子" placeholderClass="placeholder" type="text"
+        value="{{keyword}}"></input>
+    </view>
+    <view class="add-box" bindtap="addNewCircle">
+      <image class="addimage" src="/image/newcircle.png" />建圈
+    </view>
+  </view>
+  <view class="set-heigth">
+    <view class="containers" wx:if="{{keyword == ''}}">
+      <view class="nav_left">
+        <scroll-view scrollY class="nav_left_box" scrollWithAnimation="{{true}}">
+          <view bindtap="switchRightTab" class="nav_left_items {{curIndex==index?'active':''}}" data-id="{{item.id}}"
+            data-index="{{index}}" wx:for="{{cats}}" wx:key="index">{{item.plate_name}}</view>
+        </scroll-view>
+      </view>
+      <view class="nav_right">
+        <scroll-view scrollY class="right-items" scrollTop="{{scrollTop}}">
+          <view class="loading" style="margin-top:-40rpx;" wx:if="{{subcatsloading}}">
+            <image mode="aspectFit" src="/image/load.gif"></image>
+          </view>
+
+          <view wx:if="{{curIndex == 0 && banner.length>0}}" class="{{swiperload?'swiperload':'swiper-container'}}">
+            <l-skeleton loading="{{swiperload}}" rows="1" title="{{false}}" rows-width="{{['530rpx']}}"
+              rows-height="200rpx">
+              <swiper circular enableFlex autoplay="true" bindchange="changeCurrentIdx" class="banners"
+                duration="{{500}}" interval="5000" nextMargin="30rpx" previousMargin="30rpx">
+                <swiper-item bindtap="navToBannerLink" class="banner__item" data-type="{{banner.slideshow_type}}"
+                  data-link="{{banner.link}}" data-postsid="{{banner.posts_id}}" data-circleid="{{banner.circle_id}}"
+                  wx:for="{{banner}}" wx:for-item="banner" wx:key="link">
+                  <image class="banner__image {{index===currentIdx?'banner__image--active':''}}" mode="aspectFill"
+                    src="{{banner.poster}}"></image>
+                </swiper-item>
+              </swiper>
+              <view class="indicators">
+                <view class="indicator {{index===currentIdx?'indicator-active':''}}" wx:for="{{banner}}" wx:key="link">
+                </view>
+              </view>
+            </l-skeleton>
+          </view>
+
+          <view catchtap="routeClubDetail" class="area-club" data-id="{{item.id}}" wx:for="{{subcats}}" wx:key="index"
+            wx:if="{{subcats.length>0&&!subcatsloading}}">
+            <view>
+              <image class="image" mode="aspectFill" src="{{item.head_portrait}}"></image>
+            </view>
+            <view class="area-club-info">
+              <view class="area-club-name">
+                <image src="/image/circle-mix.png"></image>{{item.circle_name}}
+              </view>
+              <view class="area-club-creater">
+                <view class="area-club-creater" style="color:#333">
+                  <text>{{item.posts_count}}条动态</text>
+                  <view class="shu"></view>
+                  <text>{{item.user_circle_count}}人讨论</text>
+                </view>
+              </view>
+              <view class="mt-6">简介：{{item.circle_introduce}}</view>
+            </view>
+          </view>
+          <view class="empty-view" wx:if="{{subcats!=null&&subcats.length==0&&!subcatsloading}}">
+            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            </empty-view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+    <view wx:else>
+      <view class="nav_right">
+        <scroll-view scrollY class="right-items" scrollTop="{{scrollTop}}">
+          <view class="loading" style="margin-top:-40rpx;" wx:if="{{keywordSubcatsloading}}">
+            <image mode="aspectFit" src="/image/load.gif"></image>
+          </view>
+          <view catchtap="routeClubDetail" class="area-club" data-id="{{item.id}}" wx:for="{{keywordSubcats}}"
+            wx:key="index" wx:if="{{keywordSubcats.length>0&&!keywordSubcatsloading}}">
+            <view>
+              <image class="image s-img" mode="aspectFill" src="{{item.head_portrait}}"></image>
+            </view>
+            <view class="area-club-info">
+              <view class="area-club-name w-w">
+                <image src="/image/circle-mix.png"></image>{{item.circle_name}}
+              </view>
+              <view class="area-club-creater w-w">
+                <view class="area-club-creater" style="color:#333">
+                  <text>{{item.posts_count}}条动态</text>
+                  <view class="shu"></view>
+                  <text>{{item.user_circle_count}}人讨论</text>
+                </view>
+              </view>
+              <view class="mt-6 w-w">简介：{{item.circle_introduce}}</view>
+            </view>
+          </view>
+          <view wx:if="{{keywordSubcats!=null&&keywordSubcats.length==0&&!keywordSubcatsloading}}">
+            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            </empty-view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<l-popup show="{{vipPopup}}" bind:lintap="vipPopupTap" animation="true" z-index="99">
+  <view class="vip-box">
+    <image class="vip-box-image"
+      src="http://127.0.0.1/storage/wxprogram/image/Sharing%20Ideas-amico.png" mode="aspectFill" />
+    <view class="vip-box-conent-text">
+      限活动有效期内点击下方分享按钮成功分享至<p>200人</p>以上的微信群聊，即可获得轻航大会员。
+    </view>
+    <button class="vip-box-btn" open-type="share">分享免费领取</button>
+    <view class="vip-box-conent">
+      <text>还有</text>
+      <l-countdown time-type='datetime' time="{{tomorrowTime}}" l-class-time="countdown-blue" l-class="countdown-text"
+        format="{%h}H{%m}M{%s}S" />
+      <text style="margin-left:8rpx">活动就结束了</text>
+    </view>
+  </view>
+</l-popup>

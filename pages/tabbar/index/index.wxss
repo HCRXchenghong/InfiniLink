@@ -1,0 +1,255 @@
+@import "/pages/template/circle.wxss";
+
+.empty-box {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading {
+  text-align: center;
+}
+
+.loading image {
+  width: 68rpx;
+  height: 68rpx;
+  margin: 20rpx 0rpx;
+}
+
+.logo {
+  width: 180rpx;
+  height: 60rpx;
+  padding-right: 20rpx;
+  vertical-align: middle;
+}
+
+.index-header {
+  height: 80rpx;
+  background: white;
+  box-sizing: border-box;
+  z-index: 9999;
+  position: fixed;
+  top: 0px;
+  width: 100%;
+  left: 0;
+  display: flex;
+  padding-left: 35rpx;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.topping {
+  padding-bottom: 20rpx;
+  margin-bottom: 20rpx;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.topping-article {
+  padding: 0rpx 30rpx;
+}
+
+.recoBox {
+  padding: 10rpx 0rpx 20rpx;
+  position: relative;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.recommend {
+  text-align: center;
+  position: relative;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.rp4 {
+  padding-bottom: 98rpx;
+}
+
+.rp5 {
+  padding-bottom: 196rpx;
+}
+
+.recommend:nth-of-type(1),
+.recommend:nth-of-type(6) {
+  width: 462rpx;
+  height: 186rpx;
+  line-height: 186rpx;
+  font-size: 36rpx;
+  animation: fadeIn 0.5s ease;
+}
+
+.recommend:nth-of-type(1) {
+  float: left;
+}
+
+.recommend:nth-of-type(2),
+.recommend:nth-of-type(3),
+.recommend:nth-of-type(4),
+.recommend:nth-of-type(5) {
+  width: 222rpx;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 24rpx;
+}
+
+.recommend:nth-of-type(2),
+.recommend:nth-of-type(3) {
+  float: right;
+}
+
+.recommend:nth-of-type(3) {
+  margin-top: 10rpx;
+}
+
+.recommend:nth-of-type(4),
+.recommend:nth-of-type(5) {
+  position: absolute;
+}
+
+.recommend:nth-of-type(4) {
+  top: 206rpx;
+}
+
+.recommend:nth-of-type(5) {
+  top: 304rpx;
+}
+
+.recommend:nth-of-type(6) {
+  float: right;
+  margin-top: 10rpx;
+}
+
+.recoTitle {
+  color: #fff;
+  width: 80%;
+  line-height: 135%;
+  vertical-align: middle;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: -o-ellipsis-lastline;
+  text-overflow: ellipsis;
+  display: -webkit-inline-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  position: relative;
+  z-index: 1;
+}
+
+.recommend:nth-of-type(2) .recoTitle,
+.recommend:nth-of-type(5) .recoTitle {
+  color: #000;
+}
+
+.linearMask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.lm_1 {
+  background: #000000;
+  opacity: 0.3;
+}
+
+.lm_2 {
+  background: #000000;
+  opacity: 0.6;
+}
+
+.lm_3 {
+  background: linear-gradient(to right, #f5f6f7, #e5eaf0);
+  opacity: 1;
+}
+
+.tab-view::before {
+  content: '';
+  position: absolute;
+  -webkit-transform: scaleY(0.5);
+  transform: scaleY(0.5);
+  bottom: 0;
+  right: 0;
+  left: 0;
+}
+
+.tab-view {
+  width: 100%;
+  height: 80rpx;
+  overflow: hidden;
+  box-sizing: border-box;
+  white-space: nowrap;
+  position: fixed;
+  left: 0;
+  padding-right: 100rpx;
+  z-index: 99;
+  background: #fff;
+}
+
+.tab-bar-item {
+  padding: 0;
+  height: 80rpx;
+  min-width: 80rpx;
+  line-height: 80rpx;
+  margin: 0 28rpx;
+  display: inline-block;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.tab-bar-title {
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 28rpx;
+  color: #949494;
+  font-weight: 450;
+  font-family: "PingFang SC Medium";
+  animation: fadeIn 0.2s ease;
+}
+
+.active .tab-bar-title {
+  font-size: 34rpx;
+  color: #333333;
+  font-weight: bold;
+  font-family: "PingFang SC Heavy";
+}
+
+.active {
+  position: relative;
+}
+
+.active:after {
+  content: "";
+  display: block;
+  width: 16rpx;
+  height: 6rpx;
+  background: #333333;
+  border-radius: 6rpx;
+  position: absolute;
+  bottom: 8rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  transition: all .4s ease;
+}
+
+.tab-more {
+  position: fixed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  right: 0;
+  height: 80rpx;
+  width: 100rpx;
+  z-index: 99;
+  background: white;
+  box-shadow: -10px 0 13px -16px #949494;
+}
+
+.tab-more image {
+  height: 42rpx;
+  width: 42rpx;
+  margin-right: 10rpx;
+}

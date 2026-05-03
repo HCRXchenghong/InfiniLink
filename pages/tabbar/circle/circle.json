@@ -1,0 +1,14 @@
+{
+  "navigationStyle": "custom",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 50,
+  "usingComponents": {
+    "navBar": "../../../components/navbar/navbar",
+    "mp-html": "/components/mp-weixin/index",
+    "l-loadmore": "/linui/loadmore/index",
+    "l-sticky": "/linui/sticky/index",
+    "l-sticky-item": "/linui/sticky-item/index",
+    "empty-view": "/linui/empty-view/empty-view",
+    "l-skeleton": "/linui/skeleton/index"
+  }
+}

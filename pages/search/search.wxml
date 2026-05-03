@@ -1,0 +1,119 @@
+<import src="/pages/template/circle.wxml" />
+<view class="search-form-inner">
+  <view class="search-box">
+    <image src="/image/search-line.png" class="search-icon"></image>
+    <input focus="{{true}}" bindconfirm="onSearchConfirm" bindinput="onSearchInput" class="input" confirmType="search"
+      maxlength="{{maxLen}}" name="keyword" placeholder="{{preKeyword||'点击输入搜索词'}}" placeholderClass="placeholder"
+      type="text" value="{{keyword}}"></input>
+    <button bindtap="onClearBtnClick" class="clear-btn icon-btn" wx:if="{{keyword}}">
+      <image class="icon" src="/image/clear-icon@2x.png"></image>
+    </button>
+  </view>
+  <button class="search-btn" bindtap="onSearchConfirm" wx:if="{{keyword}}">搜索</button>
+  <button bindtap="onCancelBtnClick" class="search-btn" wx:else>取消</button>
+</view>
+<view class="tabs" wx:if="{{!searchViewVisible}}">
+  <view bindtap="checkCurrent" class=" tab {{currentData==item.tabIndex?'tabnew':''}}" data-index="{{item.tabIndex}}"
+    wx:for="{{tabs}}" wx:key="index">{{item.title}}<p style="margin-left:6rpx;">{{item.cont}}</p>
+    <view class="{{currentData==item.tabIndex?'line':''}}"></view>
+  </view>
+</view>
+<view class="hit_search" wx:if="{{searchViewVisible}}">
+  <view class="stitle-box">
+    <view class="stitle bold">搜索记录</view>
+    <view wx:if="{{delSearchS}}" class="stitle-delbox">
+      <text bindtap="myDelAllSearch">全部删除</text>
+      <view class="shu"></view>
+      <text bindtap="delSearch">完成</text>
+    </view>
+    <image bindtap="delSearch" wx:else class="stitle-img" src="/image/delete-bin-4-line.png" />
+  </view>
+  <scroll-view scroll-y class="hit_words">
+    <block wx:if="{{myhotsSat}}">
+      <view wx:for="{{myhots}}" wx:key="id" class="keywords">
+        <text bindtap="searchStat" data-name="{{item.search_content}}">{{item.search_content}}</text>
+        <image wx:if="{{delSearchS}}" bindtap="myDelSearch" data-index="{{index}}" data-id="{{item.id}}"
+          class="audio-img" src="/image/del_biaoq.png"></image>
+      </view>
+    </block>
+    <block wx:else>
+      <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Search.gif"
+        title="空">
+      </empty-view>
+    </block>
+  </scroll-view>
+</view>
+<view class="hit_search2" wx:if="{{searchViewVisible}}">
+  <view>
+    <text class="stitle bold">热门搜索</text>
+  </view>
+  <view class="hit_words">
+    <view bindtap="searchStat" data-name="{{item.search_content}}" wx:for="{{hots}}" wx:key="id">
+      <view class="keywords">{{item.search_content}}</view>
+    </view>
+  </view>
+</view>
+<view class="resultList" wx:if="{{!searchViewVisible}}">
+  <view class="topic-list" wx:if="{{currentData==0}}">
+    <view slot="content">
+      <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+        rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
+        <template is="circle"
+          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+      </l-skeleton>
+      <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text=""
+        size="28" color="#949494" />
+    </view>
+  </view>
+  <block wx:if="{{currentData==1}}">
+    <l-skeleton loading="{{topicload}}" rows="1" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+      l-class="topic-skeleton">
+      <view catchtap="routeClubDetail" class="area-club" data-id="{{item.id}}" wx:for="{{cats}}" wx:key="index">
+        <view>
+          <image class="image" mode="aspectFill" src="{{item.head_portrait}}"></image>
+        </view>
+        <view class="area-club-info">
+          <view class="area-club-name">
+            <image class="area-club-image" src="/image/circle-mix.png" />{{item.circle_name}}
+          </view>
+          <view class="area-club-creater" style="color:#333">
+            <text>{{item.posts_count}}条动态</text>
+            <view class="shu"></view>
+            <text>{{item.user_circle_count}}人讨论</text>
+          </view>
+          <view class="mt-6">
+            <text>简介：</text>{{item.circle_introduce}}
+          </view>
+        </view>
+      </view>
+    </l-skeleton>
+    <l-loadmore l-class="l-loadmore-two" show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了"
+      loading-text="" size="28" color="#949494" />
+  </block>
+  <block wx:if="{{currentData==2}}">
+    <l-skeleton loading="{{topicload}}" rows="1" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
+      l-class="topic-skeleton">
+      <block wx:for="{{userList}}" wx:key="index">
+        <view bindtap="userTap" class="user-item" data-uid="{{item.id}}">
+          <image class="avatars" lazyLoad="{{true}}" mode="aspectFill" src="{{item.user_avatar}}"></image>
+          <view class="infos">
+            <view class="titles">
+              <view class="nickname">
+                <text>{{item.weixin_name}}</text>
+              </view>
+            </view>
+            <view class="intro">{{item.user_introduce||'这个人太懒什么也没说..'}}</view>
+          </view>
+        </view>
+      </block>
+    </l-skeleton>
+    <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
+      color="#949494" />
+  </block>
+  <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Search.gif" title="空"
+    wx:if="{{isNull}}">
+  </empty-view>
+</view>
+<!-- 生成海报组件 -->
+<poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
+  bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>

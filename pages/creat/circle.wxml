@@ -1,0 +1,87 @@
+<view class="container">
+  <view class="nav-box">
+    <view class="search-box">
+      <image class="icon" src="/image/search-line.png"></image>
+      <input focus="{{focus}}" bindconfirm="onSearchConfirm" bindinput="onSearchInput" class="input"
+        confirmType="search" name="keyword" placeholder="输入名称搜索圈子" placeholderClass="placeholder" type="text"
+        value="{{keyword}}"></input>
+    </view>
+    <view class="add-box" bindtap="onSearchConfirm">搜索</view>
+  </view>
+  <view class="set-heigth">
+    <view class="containers" wx:if="{{keyword == ''}}">
+      <view class="nav_left">
+        <scroll-view scrollY class="nav_left_box" scrollWithAnimation="{{true}}">
+          <view bindtap="switchRightTab" class="nav_left_items {{curIndex==index?'active':''}}" data-id="{{item.id}}"
+            data-index="{{index}}" wx:for="{{cats}}" wx:key="index">{{item.plate_name}}</view>
+        </scroll-view>
+      </view>
+      <view class="nav_right">
+        <scroll-view scrollY class="right-items" scrollTop="{{scrollTop}}">
+          <view class="loading" style="margin-top:-40rpx;" wx:if="{{subcatsloading}}">
+            <image mode="aspectFit" src="/image/load.gif"></image>
+          </view>
+          <view catchtap="routeClubDetail" class="area-club" data-id="{{item.id}}" wx:for="{{subcats}}" wx:key="index"
+            wx:if="{{subcats.length>0&&!subcatsloading}}">
+            <view>
+              <image class="image" mode="aspectFill" src="{{item.head_portrait}}"></image>
+            </view>
+            <view class="area-club-info">
+              <view class="area-club-name">
+                <image src="/image/circle-mix.png"></image>{{item.circle_name}}
+              </view>
+              <view class="area-club-creater">
+                <view class="area-club-creater" style="color:#333">
+                  <text>{{item.posts_count}}条动态</text>
+                  <view class="shu"></view>
+                  <text>{{item.user_circle_count}}人讨论</text>
+                </view>
+              </view>
+              <view class="mt-6">简介：{{item.circle_introduce}}</view>
+            </view>
+            <view class="choice-box" catchtap="choiceTap" data-name="{{item.circle_name}}" data-id="{{item.id}}">选择
+            </view>
+          </view>
+          <view class="empty-view" wx:if="{{subcats!=null&&subcats.length==0&&!subcatsloading}}">
+            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            </empty-view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+    <view wx:else>
+      <view class="nav_right">
+        <scroll-view scrollY class="right-items" scrollTop="{{scrollTop}}">
+          <view class="loading" style="margin-top:-40rpx;" wx:if="{{keywordSubcatsloading}}">
+            <image mode="aspectFit" src="/image/load.gif"></image>
+          </view>
+          <view catchtap="routeClubDetail" class="area-club" data-id="{{item.id}}" wx:for="{{keywordSubcats}}"
+            wx:key="index" wx:if="{{keywordSubcats.length>0&&!keywordSubcatsloading}}">
+            <view>
+              <image class="image s-img" mode="aspectFill" src="{{item.head_portrait}}"></image>
+            </view>
+            <view class="area-club-info">
+              <view class="area-club-name w-w">
+                <image src="/image/circle-mix.png"></image>{{item.circle_name}}
+              </view>
+              <view class="area-club-creater w-w">
+                <view class="area-club-creater" style="color:#333">
+                  <text>{{item.posts_count}}条动态</text>
+                  <view class="shu"></view>
+                  <text>{{item.user_circle_count}}人讨论</text>
+                </view>
+              </view>
+              <view class="mt-6 w-w">简介：{{item.circle_introduce}}</view>
+            </view>
+            <view class="choice-box" bindtap="choiceTap" data-name="{{item.circle_name}}" data-id="{{item.id}}">选择
+            </view>
+          </view>
+          <view wx:if="{{keywordSubcats!=null&&keywordSubcats.length==0&&!keywordSubcatsloading}}">
+            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            </empty-view>
+          </view>
+        </scroll-view>
+      </view>
+    </view>
+  </view>
+</view>

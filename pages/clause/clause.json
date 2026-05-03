@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "",
+  "usingComponents": {
+    "mp-html": "/components/mp-weixin/index"
+  }
+}

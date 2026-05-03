@@ -1,0 +1,15 @@
+<wxs module="filters" src="../../../utils/fixed.wxs"></wxs>
+<view class="shop-box" bindtap="toPostsDetail" data-id="{{data.id}}">
+  <image class="shop-box-cover" mode="widthFix" src="{{data.img}}" />
+  <rich-text nodes="{{data.posts_content}}" class="shop-box-title" />
+  <view class="df-box">
+    <view class="df-box-comt" catchtap="toUser" data-id="{{data.user.id}}">
+      <image class="head-portrait" mode="aspectFill" src="{{data.user.user_avatar}}" />
+      <text class="shop-box-name">{{data.user.user_name}}</text>
+    </view>
+    <view class="df-box-comt jc">
+      <text>{{data.like_count>999?filters.toFix(data.like_count):data.like_count}}</text>
+      <image class="icon" src="{{data.is_like?'/image/heart-fill.png':'/image/heart-line.png'}}" />
+    </view>
+  </view>
+</view>

@@ -1,0 +1,38 @@
+.bg-img {
+  width: 100%;
+  animation: fadeIn 1s ease;
+}
+
+.box {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 30rpx 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 50rpx 50rpx 0 0;
+  box-shadow: 0 2px 24px 0 rgb(0 0 0 / 10%);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.btn {
+  width: 280rpx;
+  height: 80rpx;
+  font-size: 32rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: #333333;
+  border-radius: 80rpx;
+  box-shadow: 0 8px 24px 0 #33333333;
+}
+
+.price {
+  font-size: 28rpx;
+  font-weight: bold;
+}

@@ -1,0 +1,110 @@
+.contain {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.contain .mask-layer {
+  background: rgba(0, 0, 0, 0.1);
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 2;
+  top: 0;
+  left: 0;
+}
+
+.contain .back-image {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  z-index: 1;
+  top: 0;
+  left: 0;
+  animation: fadeIn 0.6s ease;
+}
+
+.contain .logo-box {
+  top: 16%;
+  position: fixed;
+  z-index: 99;
+  font-weight: bold;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.contain .logo-box .logo-title {
+  font-size: 58rpx;
+}
+
+.contain .logo-box .logosub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+}
+
+.login_bg {
+  width: 100%;
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+  bottom: 20px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.login_bg button {
+  width: 500rpx;
+  height: 100rpx;
+  margin-bottom: 100px;
+  border: 1px solid #fff;
+  background: #00000040;
+  border-radius: 50rpx;
+  color: #fff;
+  font-size: 36rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: 500;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  animation: lgonMove 1s;
+}
+
+.mb20 {
+  margin-bottom: 20px !important;
+}
+
+.login_bg button image {
+  width: 48rpx;
+  height: 48rpx;
+  margin-right: 12rpx;
+}
+
+.login_bg>button::after {
+  border: none;
+}
+
+.login_bg>button:active {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.login_bg .toTiaoKuan {
+  font-size: 24rpx;
+  color: #949494;
+  display: flex;
+  align-items: center;
+}
+
+.back {
+  border: none !important;
+  color: #f5f5f5 !important;
+  background: transparent !important;
+}

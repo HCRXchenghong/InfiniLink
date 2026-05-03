@@ -1,0 +1,24 @@
+<view class="container">
+  <image wx:if="{{loadmore}}" class="load-log" src="/image/load.gif"></image>
+  <block wx:if="{{isNull}}">
+    <view class="item-container" wx:for="{{messageList}}" wx:key="index">
+      <view class="item">
+        <image class="item-avatar" mode="aspectFill" src="{{item.qh_image}}"></image>
+        <view class="item-middle">
+          <text class="item-middle-name">{{item.title}}</text>
+          <mp-html content="{{item.content}}" class="item-middle-content" />
+          <view class="see-posts" bindtap="toPostsDetail" data-id="{{item.posts_id}}">
+            <image src="/image/tabbar/tab_index_active.png"></image>查看动态
+          </view>
+          <text class="item-middle-time">{{item.created_at}}</text>
+        </view>
+        <view wx:if="{{item.is_read == 0}}" class="dian"></view>
+      </view>
+    </view>
+  </block>
+  <block wx:else>
+    <empty-view class="empty-view"
+      icon="http://127.0.0.1/storage/wxprogram/image/Email%20campaign-amico.png" title="空">
+    </empty-view>
+  </block>
+</view>

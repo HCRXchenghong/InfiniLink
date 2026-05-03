@@ -1,0 +1,85 @@
+{
+  "pages": [
+    "pages/tabbar/index/index",
+    "pages/tabbar/circle/circle",
+    "pages/tabbar/message/message",
+    "pages/tabbar/mine/mine",
+    "pages/article/article",
+    "pages/circleClass/circleClass",
+    "pages/settings/settings",
+    "pages/sticky/sticky",
+    "pages/search/search",
+    "pages/login/login",
+    "pages/pc-login/index",
+    "pages/user/user",
+    "pages/tags/list",
+    "pages/tags/tags",
+    "pages/creat/creat",
+    "pages/creat/circle",
+    "pages/creat/tags",
+    "pages/circle/circleaudit",
+    "pages/circle/creat",
+    "pages/circle/list",
+    "pages/message/detail/detail",
+    "pages/message/likeAndfav/likeAndfav",
+    "pages/message/comment/comment",
+    "pages/message/notice/notice",
+    "pages/mine/earnings/earnings",
+    "pages/mine/order/order",
+    "pages/mine/certification/certification",
+    "pages/mine/circleaudit/circleaudit",
+    "pages/mine/editmine/editmine",
+    "pages/mine/feedback/feedback",
+    "pages/mine/members/members",
+    "pages/mine/about/about",
+    "pages/mine/follow/follow",
+    "pages/clause/clause",
+    "pages/web-view/index"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff",
+    "navigationBarTitleText": "轻航",
+    "navigationBarTextStyle": "black",
+    "enablePullDownRefresh": true,
+    "onReachBottomDistance": 50
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#949494",
+    "selectedColor": "#333333",
+    "borderStyle": "black",
+    "backgroundColor": "#ffffff",
+    "list": [{
+        "pagePath": "pages/tabbar/index/index",
+        "iconPath": "/image/home_d@3x.png",
+        "selectedIconPath": "/image/home_d@3x.png"
+      },
+      {
+        "pagePath": "pages/tabbar/circle/circle",
+        "iconPath": "/image/home_d@3x.png",
+        "selectedIconPath": "/image/home_d@3x.png"
+      },
+      {
+        "pagePath": "pages/tabbar/message/message",
+        "iconPath": "/image/home_d@3x.png",
+        "selectedIconPath": "/image/home_d@3x.png"
+      },
+      {
+        "pagePath": "pages/tabbar/mine/mine",
+        "iconPath": "/image/home_d@3x.png",
+        "selectedIconPath": "/image/home_d@3x.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "你的位置信息将用于小程序位置接口的效果展示"
+    }
+  },
+  "requiredBackgroundModes": [
+    "audio",
+    "location"
+  ],
+  "sitemapLocation": "sitemap.json"
+}

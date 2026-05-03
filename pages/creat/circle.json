@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "选择圈子",
+  "usingComponents": {
+    "empty-view": "/linui/empty-view/empty-view"
+  }
+}

@@ -1,0 +1,351 @@
+<wxs module="filters" src="../../utils/fixed.wxs"></wxs>
+<template name="circle">
+  <view class="topic-detail-view" wx:for="{{posts}}" wx:key="index">
+    <view class="topic-panel" id="media_{{item.id}}">
+      <view class="user-info-view">
+        <navigator class="user-avatar-view" hover-class="none" url="/pages/user/user?id={{item.user.id}}">
+          <image class="user-avatar-image" compression="avatar" mode="aspectFill" src="{{item.user.user_avatar}}">
+          </image>
+          <view class="user-view">
+            <view class="user-name">
+              <text class="user-nick-text">{{item.user.user_name}}</text>
+              <image wx:if="{{item.user.is_official == 1}}" class="header-label" src="/image/official.png" />
+              <image wx:if="{{item.user.is_authentication == 1}}" class="header-label"
+                src="/image/authentication.png" />
+              <image wx:if="{{item.user.is_member == 1}}" class="header-label" src="/image/vip.png" />
+            </view>
+          </view>
+        </navigator>
+        <view class="user-rigth">
+          <block wx:if="{{!item.is_my_posts}}">
+            <view catchtap="postsActionFollow" data-userid="{{item.user.id}}" data-index="{{index}}" class="follow-view"
+              wx:if="{{!item.is_follow_user}}">关注</view>
+            <image catchtap="postsActionFollow" data-userid="{{item.user.id}}" data-index="{{index}}"
+              wx:elif="{{item.is_follow_user}}" class="follow-ygz" src="/image/live_personal_ic_adding@3x.png"></image>
+          </block>
+          <image catchtap="editTap" data-ismyposts="{{item.is_my_posts}}" data-iscollect="{{item.is_collect}}"
+            data-index="{{index}}" class="follow-image" data-id="{{item.id}}" src="/image/more_black_icon_show.png">
+          </image>
+        </view>
+      </view>
+
+      <block wx:if="{{!item.is_delete}}">
+        <mp-html content="{{item.posts_content}}"
+          class="content-view {{item.is_content_beyond ?'ellipsis':'unellipsis'}}" />
+        <view class="content-view-unfold" wx:if="{{item.is_content_beyond}}" bindtap="unfoldTap" data-id="{{item.id}}">
+          <view>...</view>
+          <view>展开</view>
+        </view>
+
+        <view wx:if="{{item.video==null && item.images.length>0}}" class="img-lists">
+          <block wx:if="{{item.images.length==1}}">
+            <view class="one-pictures-box">
+              <image catchtap="previewImgFunc" class="one-pictures" data-list="{{item.images}}"
+                data-src="{{imgItem.img_url}}" mode="aspectFill" src="{{imgItem.img_url}}" wx:for="{{item.images}}"
+                wx:for-item="imgItem" wx:key="index"></image>
+            </view>
+          </block>
+          <block wx:else>
+            <imageload catchtap="previewImgFunc" class="image-box {{item.images.length==4?'four-picture':''}}"
+              data-list="{{item.images}}" data-src="{{imgItem.img_url}}" mode="aspectFill" src="{{imgItem.img_url}}"
+              wx:for="{{item.images}}" wx:for-item="imgItem" wx:key="index" />
+          </block>
+        </view>
+        <view class="videomodel {{item.video.show_type == 0?'h-video':'w-video'}}"
+          wx:if="{{item.video!=null && item.video!=''}}">
+          <image bindtap="getVideoUrl" data-video="{{item.video.video_url}}" mode="aspectFill" class="video-image"
+            data-index="{{index}}" src="{{item.video.video_thumb_url}}"></image>
+          <view class="vide-icon-box" bindtap="getVideoUrl" data-video="{{item.video.video_url}}"
+            data-index="{{index}}">
+            <image src="/image/ic_video.png" class="vide-icon" />
+          </view>
+          <video wx:if="{{popupshow && index==indexvideo}}" class="video-image z-i4" unit-id="{{vutad}}" controls="true"
+            show-fullscreen-btn="true" enable-play-gesture="true" show-play-btn="true" enable-progress-gesture="true"
+            autoplay="true" loop="true" object-fit="contain" src="{{item.video.video_url}}"></video>
+        </view>
+        <view class="format-time-view">{{item.format_time}}</view>
+
+        <scroll-view scrollX enableFlex="enable-flex" enhanced="enhanced" scrollWithAnimation="scroll-with-animation"
+          showScrollbar="{{false}}" class="address-tag-all-view">
+          <view bindtap='openmap' data-lat="{{item.address.latitude}}" data-lng="{{item.address.longitude}}"
+            data-name="{{item.address.address_detailed}}" class="address-view"
+            wx:if="{{item.address!=null && item.address!=''}}">
+            <image class="view-image" mode="widthFix" src="/image/loc_icon_show.png"></image>
+            <text class="view-text">{{item.address.address_detailed}}</text>
+          </view>
+          <view class="tag-view" catchtap="toTagesInfo" data-name="{{tag.tags_name}}" data-id="{{tag.id}}"
+            wx:if="{{item.tags.length > 0}}" wx:for="{{item.tags}}" wx:key="index" wx:for-item="tag">
+            <image class="view-image" src="/image/topic.png"></image>
+            <text class="view-text">{{tag.tags_name}}</text>
+          </view>
+          <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}">
+            <text>{{item.circle.circle_name}}</text>
+          </view>
+        </scroll-view>
+
+        <view class="card__footer">
+          <view class="share" data-index="{{index}}" data-userid="{{item.user.id}}" data-id="{{item.id}}"
+            catchtap="rewardTap">
+            <image mode="aspectFill" src="/image/money-cny-circle-line.png" /><text>打赏</text>
+          </view>
+          <view class="upvoteAndreply">
+            <view class="upvote">
+              <image data-index="{{index}}" data-id="{{item.id}}" catchtap="shareTap" mode="aspectFill"
+                src="/image/share-forward-line.png"></image>
+            </view>
+            <view bindtap="gotoComments" data-index="{{index}}" data-comment_count="{{item.comment_count}}"
+              data-id="{{item.id}}" class="reply">
+              <image lazyLoad="{{true}}" mode="aspectFill" src="/image/message-3-line.png"></image>
+              <text>{{filters.toFix(item.comment_count)}}</text>
+            </view>
+            <view catchtap="taplikes" data-id="{{item.id}}" data-index="{{index}}" class="reply">
+              <image animation="{{subject.voteAnimation}}" lazyLoad="{{true}}" mode="aspectFill"
+                src="{{item.is_like?'/image/heart-fill.png':'/image/heart-line.png'}}">
+              </image>
+              <text>{{filters.toFix(item.like_count)}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="reward-box" wx:if="{{item.exceptional.length>0}}" data-id="{{item.id}}" bindtap="onClickReward"
+          data-ecount='{{item.exceptional_count}}'>
+          <view class="cu-avatar-group">
+            <view wx:if="{{item.exceptional_count>6}}" class="cu-avatar round dian">•••</view>
+            <view class="cu-avatar round" wx:for="{{item.exceptional}}" wx:for-item="exceptional" wx:key="rid"
+              style="background-image:url({{exceptional.user_avatar}});">
+            </view>
+          </view>
+          <view class="cu-avatar-text">{{item.exceptional_count}}人打赏</view>
+        </view>
+
+        <view class="commnet-content-view-box">
+          <view bindtap="gotoComments" data-index="{{index}}" data-comment_count="{{item.comment_count}}"
+            data-id="{{item.id}}" class="commnet-content-view" wx:if="{{item.comment.length > 0}}"
+            wx:for="{{item.comment}}" wx:key="cid" wx:for-item="citem">
+            <view class="comment-detail-view">
+              <text class="content-title">{{citem.user_name}}<text wx:if="{{citem.posts_user_id == citem.user_id}}"
+                  class="content-zuozhe">作者</text>：</text>
+              <text wx:if="{{citem.comment_content != null}}">{{citem.comment_content}}</text>
+              <text wx:if="{{citem.comment_img_url != null && citem.comment_img_url != ''}}">[动画表情]</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="to_add_comments" data-postsid="{{item.id}}" catchtap="tapComment">说点什么...
+        </view>
+      </block>
+    </view>
+
+    <!-- 广告块 -->
+    <view class="ad-box" wx:if="{{ad && index%6==1}}">
+      <view class="adContainer">
+        <ad-custom unit-id="{{ad}}"></ad-custom>
+      </view>
+    </view>
+  </view>
+
+
+  <l-popup show="{{rewardPopup}}" bind:lintap="shutReward" animation="true" z-index="99999991009">
+    <view class="reward-add-box">
+      <image class="reward-add-box-image"
+        src="http://127.0.0.1/storage/wxprogram/image/Make%20it%20rain-cuate.png" mode="aspectFill" />
+      <view class="reward-add-input-box">
+        <text>¥</text>
+        <input class="reward-add-input" bindinput="rewardPriceChange" value="{{rewardPrice}}"
+          placeholder-class="reward-add-input-phs" type="digit" placeholder="在这里输入打赏金额" />
+      </view>
+      <view class="reward-add-box-view">
+        <view bindtap="addRewardPrice" class="{{rewardPrice==2?'bd':''}}" data-price="2">¥2</view>
+        <view bindtap="addRewardPrice" class="{{rewardPrice==6?'bd':''}}" data-price="6">¥6</view>
+        <view bindtap="addRewardPrice" class="{{rewardPrice==8?'bd':''}}" data-price="8">¥8</view>
+        <view bindtap="addRewardPrice" class="{{rewardPrice==18?'bd':''}}" data-price="18">¥18</view>
+      </view>
+      <view class="reward-add-box-btn" bindtap="openExceptionalAccount">确认打赏</view>
+    </view>
+  </l-popup>
+
+  <view catchtouchmove="touchmove" class="dialog {{rewardDialog?'dialog_show':''}}">
+    <view bindtap="onClickReward" class="dialog_mask"></view>
+    <view class="dialog_container">
+      <view class="dialog_box_title">
+        {{exceptionalCount}}人打赏
+        <image src="/image/close-fill.png" catchtap="onClickReward" />
+      </view>
+      <scroll-view scroll-y="true" class="dialog_comments" enhanced show-scrollbar="false" lower-threshold="0">
+        <view class="dialog_conent">
+          <view class="reward-user-box" wx:for="{{exceptionalList}}" wx:key="rindex">
+            <navigator class="reward-user-avatar-view" hover-class="none" url="/pages/user/user?id={{item.user.id}}">
+              <image class="reward-user-avatar-image" compression="avatar" mode="aspectFill"
+                src="{{item.user.user_avatar}}">
+              </image>
+              <view class="reward-user-right">
+                <view class="reward-user-name">{{item.user.user_name}}</view>
+                <view class="reward-user-date">{{item.exceptional_date}}</view>
+              </view>
+            </navigator>
+            <view class="reward-user-price">打赏了<l-price unit="￥" autofix value="{{item.exceptional_price}}"
+                reserve-digit="2" value-color="#FA5150" value-size="48" unit-color="#FA5150" unit-size="28">
+              </l-price>
+            </view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+  </view>
+
+  <view catchtouchmove="touchmove" class="dialog {{showDialog?'dialog_show':''}}">
+    <view bindtap="onClickCancle" class="dialog_mask"></view>
+    <view class="dialog_container">
+      <view class="dialog_conent">
+        <view catchtap="editOrCollectTap" class="select-item">{{isCollect?'取消收藏':'收藏'}}</view>
+        <view wx:if="{{isMyPosts}}" catchtap="editOrDeleteTap" class="select-item" id="delete">删除
+        </view>
+        <view bindtap="onClickCancle" class="cancel-btn">取消</view>
+      </view>
+    </view>
+  </view>
+
+  <view catchtouchmove="touchmove" class="dialog {{bounced?'dialog_show':''}}">
+    <view bindtap="bouncedTap" class="dialog_mask"></view>
+    <view class="dialog_container">
+      <view class="dialog_conent">
+        <view catchtap="bouncedDeleteTap" class="delete-btn" id="delete">确认删除</view>
+        <view bindtap="bouncedTap" class="cancel-btn">取消</view>
+      </view>
+    </view>
+  </view>
+
+  <view catchtouchmove="touchmove" class="dialog {{showShare?'dialog_show':''}}">
+    <view bindtap="onClickShare" class="dialog_mask"></view>
+    <view class="dialog_container">
+      <view class="dialog_conent">
+        <view class="dialog_box">
+          <button open-type="share" class="dialog_btn">
+            <image src="/image/wechat.png"></image>
+            微信好友
+          </button>
+          <view catchtap="sharePosterClick" class="dialog_btn">
+            <image src="/image/camera.png"></image>
+            朋友圈
+          </view>
+        </view>
+        <view bindtap="onClickShare" class="cancel-btn">取消</view>
+      </view>
+    </view>
+  </view>
+
+  <view catchtouchmove="touchmove" class="{{showComments?'dialog_show':''}}">
+    <view catchtap="toShutComments" class="dialog_mask"></view>
+    <view class="dialog_container">
+      <view class="dialog_box_title">
+        评论 {{commentCount>999?filters.toFix(commentCount):commentCount}}
+        <image src="/image/close-fill.png" catchtap="toShutComments" />
+      </view>
+      <scroll-view scroll-y="true" class="dialog_comments" enhanced show-scrollbar="false"
+        bindscrolltolower="commentTolower" lower-threshold="0">
+        <view class="comment-reply">
+          <view class="comment-reply-item" wx:for="{{comments}}" wx:key="id" wx:for-index="cindex">
+            <view class="comment-header">
+              <view class="comment-header-left" catchtap="userTap" data-uid="{{item.user_id}}">
+                <image class="comment-avatar" src="{{item.user_avatar}}">
+                </image>
+                <view class="comment-user-date">
+                  <text>{{item.user_name}}<text wx:if="{{item.posts_user_id == item.user_id}}"
+                      class="comment-zuozhe">作者</text></text>
+                  <text>{{item.format_time}}</text>
+                </view>
+              </view>
+              <view class="comment-header-right">
+                <view>{{filters.toFix(item.like_count)}}</view>
+                <image data-id="{{item.id}}" data-cmtindex="{{cindex}}" bindtap="tapCommentlike"
+                  src="/image/heart-fill.png" wx:if="{{item.is_like}}">
+                </image>
+                <image data-id="{{item.id}}" data-cmtindex="{{cindex}}" bindtap="tapCommentlike"
+                  src="/image/heart-line.png" wx:else></image>
+                <text wx:if="{{item.user_id == item.uid}}" data-cmtindex="{{cindex}}" bindtap="tapDeleteComment"
+                  data-id="{{item.id}}">删除</text>
+              </view>
+            </view>
+            <view class="comment-content" bindtap="tapComment" data-id="{{item.id}}" data-userid="{{item.user_id}}"
+              data-reply="{{item.user_name}}">
+              <view class="commentconent">
+                <view class="contentinfo">
+                  <block wx:if="{{item.comment_content != null}}">
+                    {{item.comment_content}}
+                  </block>
+                </view>
+              </view>
+              <image wx:if="{{item.comment_img_url != null && item.comment_img_url != ''}}" class="img-list"
+                lazy-load='{{true}}' catchtap="previewImgFunc" data-list="{{item.imgList}}"
+                data-src="{{item.comment_img_url}}" mode="aspectFill" src="{{item.comment_img_url}}"></image>
+            </view>
+            <view class="replay-content" wx:for="{{item.child}}" wx:key="id" wx:for-index="cindexs" wx:for-item="items">
+              <view class="comment-header">
+                <view class="comment-header-left" catchtap="userTap" data-uid="{{items.user_id}}">
+                  <image class="comment-avatar" src="{{items.user_avatar}}">
+                  </image>
+                  <view class="comment-user-date">
+                    <text>{{items.user_name}}</text>
+                    <text>{{items.format_time}}</text>
+                  </view>
+                </view>
+                <view class="comment-header-right">
+                  <view>{{filters.toFix(items.like_count)}}</view>
+                  <image data-id="{{items.id}}" data-cmtindex="{{cindex}}" data-cmtindexs="{{cindexs}}"
+                    bindtap="tapCommentslike" src="/image/heart-fill.png" wx:if="{{items.is_like}}">
+                  </image>
+                  <image data-id="{{items.id}}" data-cmtindex="{{cindex}}" data-cmtindexs="{{cindexs}}"
+                    bindtap="tapCommentslike" src="/image/heart-line.png" wx:else></image>
+                  <text wx:if="{{item.user_id == item.uid}}" data-id="{{items.id}}" data-cmtindex="{{cindex}}"
+                    data-cmtindexs="{{cindexs}}" bindtap="tapDeleteComments">删除</text>
+                </view>
+              </view>
+              <view class="comment-content" bindtap="tapComment" data-id="{{item.id}}" data-reply="{{items.user_name}}"
+                data-userid="{{items.user_id}}">
+                <view class="commentconent">
+                  <view class="contentinfo">
+                    <block wx:if="{{item.user_id != items.comment_agent_id}}">
+                      回复<text>{{items.comment_agent_name}}</text>：
+                    </block>
+                    <block wx:if="{{items.comment_content != null}}">
+                      {{items.comment_content}}
+                    </block>
+                  </view>
+                </view>
+                <image wx:if="{{items.comment_img_url != null && items.comment_img_url != ''}}" class="img-list"
+                  lazy-load='{{true}}' catchtap="previewImgFunc" data-list="{{items.imgList}}"
+                  data-src="{{items.comment_img_url}}" mode="aspectFill" src="{{items.comment_img_url}}"></image>
+              </view>
+            </view>
+          </view>
+          <l-loadmore show="{{isCommentShow}}" type="{{isCommentPage?'end':'loading'}}" end-text="已经到底了" loading-text=""
+            size="28" color="#949494" />
+        </view>
+        <block wx:if="{{commentIsNull && comments.length <= 0}}">
+          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Messaging%20fun-rafiki.png"
+            title="快来抢占沙发吧">
+          </empty-view>
+        </block>
+      </scroll-view>
+      <view class="add_comments" data-index="{{index}}" data-id="{{item.id}}" catchtap="tapComment">说点什么
+        <image catchtap="addCommentPic" data-name="imageValue" src="/image/image-line-add.png"></image>
+      </view>
+    </view>
+  </view>
+
+  <view bindtap="shutCommentShow" catchtouchmove="touchmove"
+    class="comment-dialog-bg {{!showTextarea?'comment-dialog-bg-hidden':''}}"></view>
+  <view catchtouchmove="touchmove" class="comment-dialog-container" wx:if="{{showTextarea}}">
+    <view class="imgs-box" wx:if="{{imageValue !=''}}">
+      <image mode="aspectFill" lazy-load='{{true}}' src="{{imageValue}}"></image>
+      <image bindtap="delCommentPic" class="del" src="/image/icon_delete_buoy.png"></image>
+    </view>
+    <view class="comment-dialog-bottom">
+      <input confirm-type="send" bindconfirm="onInputComment" class="comment-dialog-input" cursorSpacing="16rpx"
+        focus="{{focus}}" maxlength="1000" placeholder="{{replyName}}" value="{{inputValue}}"></input>
+      <image bindtap="addCommentPic" data-name="imageValue" class="comment-dialog-image" mode="aspectFill"
+        src="/image/image-line-add.png">
+      </image>
+    </view>
+  </view>
+</template>

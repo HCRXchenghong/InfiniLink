@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "审贴",
+  "usingComponents": {
+    "empty-view": "/linui/empty-view/empty-view",
+    "mp-html": "/components/mp-weixin/index",
+    "poster": "/components/poster/poster/index",
+    "imageload": "/linui/image-loader/image-loader",
+    "l-popup": "/linui/popup/index",
+    "l-skeleton": "/linui/skeleton/index"
+  }
+}

@@ -1,0 +1,176 @@
+.searchBar {
+  background: #fff;
+  padding-left: 30rpx;
+  padding-right: 30rpx;
+  overflow: hidden;
+  padding-top: 10rpx;
+  padding-bottom: 1px;
+  position: fixed;
+  width: 690rpx;
+}
+
+.searchBar,
+.tit_seabox_bar {
+  height: 68rpx;
+  display: flex;
+  align-items: center;
+}
+
+.tit_seabox_bar {
+  width: 564rpx;
+  border-bottom: 1px solid #333333;
+}
+
+input {
+  height: 68rpx;
+  line-height: 68rpx;
+  font-size: 28rpx;
+  width: 100%;
+  margin-right: 32rpx;
+}
+
+.activity_seabtn {
+  width: 110rpx;
+  height: 68rpx;
+  border-radius: 8rpx;
+  background: #333333;
+  color: #fff;
+  margin-left: 16rpx;
+  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.no_topic {
+  margin: 0 30rpx;
+  padding-bottom: 20rpx;
+  display: flex;
+  padding-top: 120rpx;
+  justify-content: flex-start;
+  align-items: center;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.topic {
+  line-height: 100rpx;
+}
+
+.topic {
+  height: 100rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 30rpx;
+}
+
+.topic:last-child {
+  border-bottom: 0;
+  margin-bottom: 100rpx;
+}
+
+.main {
+  font-size: 32rpx;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.main image {
+  width: 36rpx;
+  height: 36rpx;
+  margin-right: 10rpx;
+}
+
+.main,
+.sub {
+  font-weight: 400;
+  line-height: 100rpx;
+}
+
+.sub {
+  font-size: 24rpx;
+  color: #949494;
+}
+
+.noData {
+  height: 540rpx;
+  margin-top: 150rpx;
+}
+
+.noData-img {
+  width: 340rpx;
+  height: 280rpx;
+  display: block;
+  margin: 0 auto 10rpx;
+}
+
+.noDataTxt {
+  text-align: center;
+  color: #949494;
+  font-size: 28rpx;
+}
+
+
+.btnbottom {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1rpx solid #f5f5f5;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.issue {
+  margin: 30rpx auto;
+  width: 90%;
+  color: #fff;
+  height: 96rpx;
+  line-height: 96rpx;
+  text-align: center;
+  border-radius: 12rpx;
+  font-size: 32rpx;
+  font-family: PingFangSC-Medium;
+  font-weight: bold;
+  background: #333333 !important;
+}
+
+.address-tag-all-view {
+  padding: 20rpx;
+  display: flex;
+  position: relative;
+  flex: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tag-view {
+  position: relative;
+  padding: 0 30rpx;
+  margin-top: 20rpx;
+  margin-right: 16rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  border-radius: 500rpx;
+  border: 1px solid #f5f5f5;
+}
+
+.tag-text {
+  font-size: 22rpx;
+  line-height: 22rpx;
+  color: #333;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.audio-delete {
+  position: absolute;
+  width: 30rpx;
+  height: 30rpx;
+  top: -15rpx;
+  right: -15rpx;
+}

@@ -1,0 +1,56 @@
+.box {
+  width: 93%;
+  margin: 20rpx auto 10rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.l-list {
+  height: 140rpx !important;
+}
+
+.bb {
+  border-bottom: none !important;
+}
+
+.btn-list {
+  width: 100% !important;
+  height: 140rpx !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.btn-list .btn-box {
+  font-size: 28rpx;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.btn-list .btn-box image {
+  width: 44rpx;
+  height: 44rpx;
+  margin-left: 6rpx;
+  margin-right: 20rpx;
+}
+
+button {
+  padding: 0;
+  border: none;
+  background: none;
+  margin: 0;
+}
+
+.box-btn {
+  margin: 30rpx 0;
+  width: 100%;
+  height: 90rpx;
+  color: #FF5F5C;
+  font-size: 26rpx;
+  font-weight: bold;
+  background: #f5f5f5;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

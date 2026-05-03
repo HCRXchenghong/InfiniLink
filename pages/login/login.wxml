@@ -1,0 +1,19 @@
+<navBar back="{{true}}" iconTheme="white" title="登录"></navBar>
+<view class="contain">
+  <view class="mask-layer "></view>
+  <image class='back-image' mode="aspectFill" src="{{configData.app_login_bg}}">
+  </image>
+  <view class="logo-box">
+    <view class="logo-title">{{configData.app_title}}</view>
+    <view class="logosub">{{configData.app_intro}}</view>
+  </view>
+  <view class="login_bg">
+    <button class="mb20" loading="{{btnState}}" bindtap="getUserInfo" formType="submit">
+      <image src="/image/weixin.png"></image>微信登录
+    </button>
+    <button class="back" bindtap="back">先逛逛，不登录</button>
+    <view class="toTiaoKuan">登录即表示您已阅读并同意了<view bindtap="toTiaoKuan" style="color:#eee;">
+        《{{configData.app_title}}用户服务协议》</view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,58 @@
+<view class="content">
+  <view class="header">
+    <image class="header-image" bindtap="onPreviewImage" data-src="{{avatar}}" mode="aspectFill" src="{{avatar}}">
+    </image>
+    <image class="logo-camera" bindtap="clipperImage" data-type="avatarClipper" src="/image/modify.png">
+    </image>
+  </view>
+  <view class="info">
+    <view class="info-title">
+      <text>昵称</text>
+    </view>
+    <input bindinput="nicknameChange" class="info-text" placeholder="在这里输入" type="text" value="{{nickName}}"></input>
+  </view>
+  <view class="info-line"></view>
+  <view class="info">
+    <view class="info-title">
+      <text>签名</text>
+    </view>
+    <input bindinput="signatureChange" class="info-text" placeholder="在这里输入" type="text" value="{{signature}}"></input>
+  </view>
+  <view class="info-line"></view>
+  <view class="info">
+    <view class="info-title">
+      <text>生日</text>
+    </view>
+    <picker bindchange="bindDateChange" mode="date" value="{{birth}}">
+      <view class="info-text">{{birth}}</view>
+    </picker>
+  </view>
+  <view class="add_type">
+    <view class="tips">个人背景</view>
+    <view class="imgs-list">
+      <view class="imgs-item add tap relative {{showBuryBg?'showBury':''}}" wx:if="{{!imagesubject}}">
+      </view>
+      <view wx:else class="imgs-item imgs-bg relative">
+        <image mode="aspectFill" bindtap="onPreviewImage" data-src="{{imagesubject}}" src="{{imagesubject}}"></image>
+      </view>
+      <image class="logo-camera" bindtap="clipperImage" data-type="imagesubjectClipper" data-name="imagesubject"
+        src="/image/modify.png">
+      </image>
+    </view>
+  </view>
+  <button bindtap="updateInfo" class="commit">保存</button>
+</view>
+
+<block wx:if="{{avatarClipper}}">
+  <l-image-clipper width="550" height="550" show="true" image-url="{{pic}}" data-name="avatar" data-type="avatarClipper"
+    bind:linclip="addimage">
+    <l-image-clipper-tools />
+  </l-image-clipper>
+</block>
+
+<block wx:if="{{imagesubjectClipper}}">
+  <l-image-clipper width="750" height="750" show="true" image-url="{{pic}}" data-name="imagesubject"
+    data-type="imagesubjectClipper" bind:linclip="addimage">
+    <l-image-clipper-tools />
+  </l-image-clipper>
+</block>
