@@ -30,6 +30,8 @@ const options = {
       search_content: '搜索你想寻找的圈子'
     }],
     isPullDownRefresh: false,
+    scrollTop: 0,
+    customBar: 0,
   },
 
   /**
@@ -85,12 +87,15 @@ const options = {
     })
     let that = this;
     that.getSysMessageCount().then(function (res) {
-      that.getTabBar().setData({
-        sysMessageCount: res
-      })
+      const tabBar = typeof that.getTabBar === 'function' ? that.getTabBar() : null;
+      if (tabBar) {
+        tabBar.setData({
+          sysMessageCount: res
+        })
+      }
     })
     that.setData({
-      customBar: app.globalData.CustomBar
+      customBar: Number(app.globalData.CustomBar || 0)
     })
 
   },

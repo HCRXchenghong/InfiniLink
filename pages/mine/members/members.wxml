@@ -1,9 +1,127 @@
-<image src="{{configData.members_poster}}" class="bg-img" mode="widthFix"></image>
-<view class="box">
-  <view class="price">
-    <l-price unit="￥" value="{{order_price}}" autofix reserve-digit="1" value-color="#333333" value-size="80"
-      unit-color="#333333" unit-size="40">
-    </l-price>/永久
+<view class="page">
+  <view class="hero-shell hero-shell-{{selectedPlanTone}}">
+    <image wx:if="{{configData.members_poster}}" src="{{configData.members_poster}}" class="hero-image" mode="aspectFill"></image>
+    <view class="hero-mask"></view>
+    <view class="hero-card">
+      <view class="hero-badge hero-badge-{{currentMembershipCard.tone}}">{{currentMembershipCard.badge}}</view>
+      <view class="hero-title">{{currentMembershipCard.title}}</view>
+      <view class="hero-subtitle">{{currentMembershipCard.desc}}</view>
+      <view class="hero-status-row">
+        <view class="hero-status-pill">{{currentMembershipCard.statusText}}</view>
+        <view class="hero-status-pill hero-status-pill-light">{{selectedMembershipPlanData ? selectedMembershipPlanData.name : 'Pro'}} 方案</view>
+      </view>
+    </view>
   </view>
-  <view class="btn" bindtap="openMembershipAccount">立即开通</view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-title">当前选择</view>
+      <view class="section-tag">{{selectedMembershipPlanData ? selectedMembershipPlanData.badge_text : 'PRO'}}</view>
+    </view>
+    <view class="section-copy">{{selectedMembershipPlanData ? selectedMembershipPlanData.description : '选择适合你的会员方案。'}}</view>
+    <view class="highlight-grid">
+      <view class="highlight-card" wx:for="{{selectedPlanHighlights}}" wx:key="label">
+        <view class="highlight-value">{{item.value}}</view>
+        <view class="highlight-label">{{item.label}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="plan-list">
+    <view wx:for="{{membershipPlans}}" wx:key="code" data-code="{{item.code}}" bindtap="selectMembershipPlan"
+      class="plan-card {{selectedMembershipPlan == item.code ? 'plan-card-active' : ''}} {{item.code == 'max' ? 'plan-card-max' : 'plan-card-pro'}}">
+      <view class="plan-head">
+        <view>
+          <view class="plan-name">{{item.name}}</view>
+          <view class="plan-tagline">{{item.tagline}}</view>
+        </view>
+        <view class="plan-badge">{{item.badge_text}}</view>
+      </view>
+      <view class="plan-price-row">
+        <l-price unit="￥" value="{{item.price}}" autofix reserve-digit="1" value-color="#111827" value-size="56"
+          unit-color="#111827" unit-size="30">
+        </l-price>
+        <view class="plan-period">/{{item.duration_days}}天</view>
+      </view>
+      <view class="plan-desc">{{item.description}}</view>
+      <view class="plan-mini-row">
+        <view class="plan-mini-pill">{{item.duration_days}} 天</view>
+        <view class="plan-mini-pill">+{{item.growth_bonus_score || 0}} 成长值</view>
+        <view class="plan-mini-pill">{{item.growth_multiplier_text || '1x'}}</view>
+      </view>
+      <view class="plan-metrics">
+        <view class="plan-metric">
+          <view class="plan-metric-label">有效期</view>
+          <view class="plan-metric-value">{{item.duration_days}} 天</view>
+        </view>
+        <view class="plan-metric">
+          <view class="plan-metric-label">开通奖励</view>
+          <view class="plan-metric-value">+{{item.growth_bonus_score || 0}}</view>
+        </view>
+        <view class="plan-metric">
+          <view class="plan-metric-label">成长倍率</view>
+          <view class="plan-metric-value">{{item.growth_multiplier_text || '1x'}}</view>
+        </view>
+      </view>
+      <view class="plan-state plan-state-current" wx:if="{{currentMembershipTier == item.code}}">当前开通</view>
+      <view class="plan-state" wx:elif="{{selectedMembershipPlan == item.code}}">当前选择</view>
+      <view class="plan-state plan-state-disabled" wx:if="{{item.enabled == false}}">暂未开放</view>
+    </view>
+  </view>
+
+  <view class="section-card">
+    <view class="section-head">
+      <view class="section-title">方案对比</view>
+      <view class="section-tag">Pro vs Max</view>
+    </view>
+    <view class="compare-table">
+      <view class="compare-header">
+        <view class="compare-cell compare-label">项目</view>
+        <view class="compare-cell">Pro</view>
+        <view class="compare-cell">Max</view>
+      </view>
+      <view class="compare-row" wx:for="{{comparisonRows}}" wx:key="label">
+        <view class="compare-cell compare-label">{{item.label}}</view>
+        <view class="compare-cell">{{item.proValue}}</view>
+        <view class="compare-cell compare-cell-max">{{item.maxValue}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="section-card" wx:if="{{selectedMembershipPlanData}}">
+    <view class="section-head">
+      <view class="section-title">{{selectedMembershipPlanData.name}} 权益</view>
+      <view class="section-tag">{{selectedMembershipPlanData.tagline}}</view>
+    </view>
+    <view class="benefit-list">
+      <view class="benefit-item" wx:for="{{selectedMembershipPlanData.benefits}}" wx:key="index">
+        <view class="benefit-dot"></view>
+        <view class="benefit-text">{{item}}</view>
+      </view>
+    </view>
+    <view class="note-list">
+      <view class="note-item" wx:for="{{selectedPlanNotes}}" wx:key="index">
+        <view class="note-index">0{{index + 1}}</view>
+        <view class="note-text">{{item}}</view>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="box">
+  <view class="price-block">
+    <view class="price-caption">当前方案</view>
+    <view class="price-name" wx:if="{{selectedMembershipPlanData}}">{{selectedMembershipPlanData.name}}</view>
+    <view class="price-name" wx:else>Pro</view>
+    <view class="price-inline">
+      <l-price unit="￥" value="{{order_price}}" autofix reserve-digit="1" value-color="#111827" value-size="56"
+        unit-color="#111827" unit-size="28">
+      </l-price>
+      <view class="price-period">/{{selectedMembershipPlanData && selectedMembershipPlanData.duration_days ? selectedMembershipPlanData.duration_days : 30}}天</view>
+    </view>
+  </view>
+
+  <view class="btn {{membershipActionDisabled ? 'btn-disabled' : ''}}" bindtap="handleMembershipPurchase">
+    <view>{{membershipActionText}}</view>
+  </view>
 </view>

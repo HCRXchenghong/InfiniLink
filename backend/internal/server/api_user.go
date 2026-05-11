@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -25,6 +28,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if state, err := s.loadAccountAccessState(ctx, userID); err == nil {
+		if strings.EqualFold(state.AccountStatus, "banned") {
+			s.respondUserBanned(w, state)
+			return
+		}
+	}
+
 	token, err := s.signToken(userID)
 	if err != nil {
 		s.respondError(w, 500, "签发令牌失败")
@@ -36,7 +46,7 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		_, _ = s.db.Exec(ctx, `
 			INSERT INTO notifications (user_id, type, title, content, qh_image, is_read)
 			VALUES ($1, 1, '欢迎来到 InfiniLink', '<p>后台已经接上啦，接下来就可以把你的内容社区慢慢养起来。</p>', $2, 0)
-		`, userID, s.assetURL("official-popup.svg"))
+		`, userID, s.assetURL("illustrations/world-rafiki.png"))
 	}
 
 	s.respond(w, map[string]any{
@@ -48,17 +58,21 @@ func (s *Server) handleConfigData(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
 	payload, err := cachedJSON(s, ctx, cacheKey("app", "config"), s.cfg.CacheTTL, func(ctx context.Context) (map[string]any, error) {
+		ads, _ := s.getOperationAds(ctx)
+		membershipPlans, _ := s.getMembershipPlans(ctx)
 		return map[string]any{
-			"app_login_bg":                s.assetURL("login-bg.svg"),
+			"app_login_bg":                s.assetURL("illustrations/outer-space-rafiki.png"),
 			"app_title":                   s.cfg.AppName,
 			"app_intro":                   "把喜欢的人、圈子和内容连接起来。",
-			"about_logo":                  s.assetURL("about-logo.svg"),
+			"about_logo":                  s.assetURL("illustrations/world-rafiki.png"),
 			"about_title":                 "InfiniLink 内容兴趣社区",
 			"about_copyright":             "Copyright © InfiniLink",
-			"members_poster":              s.assetURL("members-poster.svg"),
-			"official_popup_poster":       s.assetURL("official-popup.svg"),
-			"authentication_popup_poster": s.assetURL("authentication-popup.svg"),
-			"members_popup_poster":        s.assetURL("member-popup.svg"),
+			"members_poster":              s.assetURL("illustrations/plain-credit-card-cuate.png"),
+			"official_popup_poster":       s.assetURL("illustrations/world-rafiki.png"),
+			"authentication_popup_poster": s.assetURL("illustrations/people-search-amico.png"),
+			"members_popup_poster":        s.assetURL("illustrations/savings-cuate.png"),
+			"membership_plans":            membershipPlans,
+			"operation_ads":               groupOperationAdsBySlot(ads),
 		}, nil
 	})
 	if err != nil {
@@ -66,6 +80,24 @@ func (s *Server) handleConfigData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.respond(w, payload, "ok")
+}
+
+func (s *Server) handleOperationAds(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	ads, err := s.getOperationAds(ctx)
+	if err != nil {
+		s.respondError(w, 500, "加载广告配置失败")
+		return
+	}
+
+	slot := normalizeText(r.URL.Query().Get("slot"))
+	if slot != "" {
+		ads = filterOperationAdsBySlot(ads, slot)
+	}
+
+	s.respond(w, ads, "ok")
 }
 
 func (s *Server) handleClauseDetail(w http.ResponseWriter, r *http.Request) {
@@ -372,13 +404,13 @@ func (s *Server) handleSubmitAuthentication(w http.ResponseWriter, r *http.Reque
 	_, err := s.db.Exec(ctx, `
 		INSERT INTO user_authentications (
 			user_id, name, contact_information, introduce, identity_picture, authentication_state, overrule_content
-		) VALUES ($1, $2, $3, $4, $5, 1, '')
+		) VALUES ($1, $2, $3, $4, $5, 0, '')
 	`, userID, limitString(payload.Name, 60), limitString(payload.ContactInformation, 60), limitString(payload.Introduce, 300), normalizeText(payload.IdentityPicture))
 	if err != nil {
 		s.respondError(w, 500, "提交认证失败")
 		return
 	}
-	_, _ = s.db.Exec(ctx, `UPDATE users SET is_authentication = TRUE WHERE id = $1`, userID)
+	_, _ = s.db.Exec(ctx, `UPDATE users SET is_authentication = FALSE WHERE id = $1`, userID)
 	s.respond(w, true, "提交成功")
 }
 
@@ -395,19 +427,19 @@ func (s *Server) handleUserCircles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	var list []map[string]any
+	var circleIDs []int64
 	for rows.Next() {
 		var circleID int64
 		if err := rows.Scan(&circleID); err != nil {
 			s.respondError(w, 500, "读取圈子失败")
 			return
 		}
-		circle, err := s.fetchCircleSummary(ctx, userID, circleID)
-		if err != nil {
-			s.respondError(w, 500, "整理圈子失败")
-			return
-		}
-		list = append(list, circle)
+		circleIDs = append(circleIDs, circleID)
+	}
+	list, err := s.buildCircles(ctx, userID, circleIDs)
+	if err != nil {
+		s.respondError(w, 500, "整理圈子失败")
+		return
 	}
 	s.respond(w, list, "ok")
 }
@@ -582,7 +614,7 @@ func (s *Server) handleMyOrders(w http.ResponseWriter, r *http.Request) {
 		}
 		total = count
 		title := "会员开通"
-		detail := "InfiniLink 永久会员"
+		detail := "InfiniLink 限时会员服务"
 		if typ == 2 {
 			title = "内容打赏"
 			detail = "给创作者的一笔支持"
@@ -774,12 +806,40 @@ func (s *Server) handleFreeGetVIP(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	if _, err := s.db.Exec(ctx, `UPDATE users SET is_member = TRUE, updated_at = NOW() WHERE id = $1`, userID); err != nil {
+	if err := s.withGrowthTx(ctx, func(tx pgx.Tx) error {
+		_, err := s.applyMembershipToUserTx(ctx, tx, userID, membershipTierPro, freeMembershipDays)
+		return err
+	}); err != nil {
 		s.respondError(w, 500, "开通会员失败")
 		return
 	}
 	s.cacheDelete(ctx, userCacheKey(userID))
 	s.respond(w, true, "领取成功")
+}
+
+func (s *Server) handleUserActivityPing(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	var payload struct {
+		OnlineSeconds int64  `json:"online_seconds"`
+		ActiveSeconds int64  `json:"active_seconds"`
+		Source        string `json:"source"`
+	}
+	if err := s.decodeJSON(r, &payload); err != nil {
+		s.respondError(w, 400, "活跃上报参数不正确")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	if err := s.recordUserActivity(ctx, userID, payload.OnlineSeconds, payload.ActiveSeconds); err != nil {
+		s.respondError(w, 500, "活跃上报失败")
+		return
+	}
+	s.respond(w, true, "ok")
 }
 
 func (s *Server) handleUserPlates(w http.ResponseWriter, r *http.Request) {
@@ -892,14 +952,34 @@ func (s *Server) handleAuditPosts(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleMembersPrice(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
 	defer cancel()
-	price, err := cachedJSON(s, ctx, cacheKey("payment", "member-price"), s.cfg.CacheTTL, func(ctx context.Context) (float64, error) {
-		return s.cfg.MembershipPrice, nil
-	})
+	plans, err := s.getMembershipPlans(ctx)
 	if err != nil {
 		s.respondError(w, 500, "获取会员价格失败")
 		return
 	}
-	s.respond(w, price, "ok")
+
+	currentTier := membershipTierNone
+	currentMembershipPayload := buildMembershipPayload(membershipState{}, time.Now())
+	userID := s.currentUserID(r)
+	if userID > 0 {
+		var (
+			isMember  bool
+			tier      sql.NullString
+			expiresAt sql.NullTime
+		)
+		if err := s.db.QueryRow(ctx, `SELECT COALESCE(is_member, FALSE), COALESCE(membership_tier, ''), membership_expires_at FROM users WHERE id = $1`, userID).Scan(&isMember, &tier, &expiresAt); err == nil {
+			state := resolveMembershipState(isMember, tier.String, expiresAt, time.Now())
+			currentTier = state.Tier
+			currentMembershipPayload = buildMembershipPayload(state, time.Now())
+		}
+	}
+
+	s.respond(w, map[string]any{
+		"plans":              plans,
+		"current_tier":       currentTier,
+		"current_tier_rank":  membershipTierRank(currentTier),
+		"current_membership": currentMembershipPayload,
+	}, "ok")
 }
 
 func (s *Server) handleOrderPlaceholder(w http.ResponseWriter, r *http.Request) {
@@ -949,7 +1029,23 @@ func (s *Server) handlePCLogin(w http.ResponseWriter, r *http.Request) {
 		Token string `json:"token"`
 		Scene string `json:"scene"`
 	}
-	if err := s.decodeJSON(r, &payload); err != nil {
+	if r.Method == http.MethodGet {
+		payload.Token = strings.TrimSpace(r.URL.Query().Get("token"))
+		payload.Scene = strings.TrimSpace(r.URL.Query().Get("scene"))
+	} else if err := s.decodeJSON(r, &payload); err != nil {
+		s.respondError(w, 400, "PC 登录参数不正确")
+		return
+	}
+	if strings.TrimSpace(payload.Token) == "" {
+		payload.Token = strings.TrimSpace(r.URL.Query().Get("token"))
+	}
+	if strings.TrimSpace(payload.Token) == "" {
+		payload.Token = strings.TrimSpace(r.Header.Get("token"))
+	}
+	if strings.TrimSpace(payload.Scene) == "" {
+		payload.Scene = strings.TrimSpace(r.URL.Query().Get("scene"))
+	}
+	if strings.TrimSpace(payload.Scene) == "" {
 		s.respondError(w, 400, "PC 登录参数不正确")
 		return
 	}

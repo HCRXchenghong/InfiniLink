@@ -1,5 +1,22 @@
-const ApiRootUrl = 'http://127.0.0.1/api/v1/'; //v1接口
-const PcApiRootUrl = 'http://127.0.0.1/api/v1/'; //PC接口
+const DefaultBaseUrl = 'http://127.0.0.1';
+
+function resolveBaseUrl() {
+  try {
+    if (typeof wx !== 'undefined' && typeof wx.getStorageSync === 'function') {
+      const customBaseUrl = wx.getStorageSync('apiBaseUrl');
+      if (customBaseUrl) {
+        return String(customBaseUrl).replace(/\/+$/, '');
+      }
+    }
+  } catch (err) {}
+
+  return DefaultBaseUrl;
+}
+
+const ApiBaseUrl = resolveBaseUrl();
+const ApiRootUrl = ApiBaseUrl + '/api/v1/'; //v1接口
+const PcApiRootUrl = ApiBaseUrl + '/api/v1/'; //PC接口
+const SocketBaseUrl = ApiBaseUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:') + '/ws';
 module.exports = {
   // 用户
   loginUrl: ApiRootUrl + 'login', //登录接口
@@ -21,6 +38,7 @@ module.exports = {
   myUserWithdrawalUrl: ApiRootUrl + 'user/myUserWithdrawal', //用户提现列表接口
   myUserExceptionalUrl: ApiRootUrl + 'user/myUserExceptional', //用户收益列表接口
   freeGetVipUrl: ApiRootUrl + 'user/freeGetVip', //免费领取会员接口
+  userActivityPingUrl: ApiRootUrl + 'user/activity/ping', //用户活跃心跳接口
 
   // 圈子
   optionsListUrl: ApiRootUrl + 'posts/plate/options', //板块列表接口
@@ -73,6 +91,7 @@ module.exports = {
   getDetailsMessagesUrl: ApiRootUrl + 'massages/getDetailsMessages', //通知详情页数据接口
   readMessagesUrl: ApiRootUrl + 'massages/readMessages', //已读对应类通知接口
   addChatUrl: ApiRootUrl + 'massages/addChat', //发起聊天接口
+  customerServiceUrl: ApiRootUrl + 'massages/customerService', //官方客服会话入口
   getUserChatUrl: ApiRootUrl + 'massages/getUserChat', //查询用户聊天记录接口
   getUserChatListUrl: ApiRootUrl + 'massages/getUserChatList', //查询用户聊天记录列表接口
   readUserChatUrl: ApiRootUrl + 'massages/readUserChat', //已读对应用户信息接口
@@ -80,6 +99,10 @@ module.exports = {
   userDelMessageUrl: ApiRootUrl + 'massages/userDelMessage', //用户删除聊天记录
   //支付
   orderUrl: ApiRootUrl + 'order', //POST发起订单接口
+  orderStatusUrl: ApiRootUrl + 'order/status', //订单状态接口
+  paymentOptionsUrl: ApiRootUrl + 'payment/options', //支付方式接口
+  ifPayOAuthStartUrl: ApiRootUrl + 'payment/ifpay/oauth/start', //IF-Pay 授权地址
+  ifPayOAuthStatusUrl: ApiRootUrl + 'payment/ifpay/oauth/status', //IF-Pay 授权状态
   getMembersPriceUrl: ApiRootUrl + 'getMembersPrice', //获取开通会员信息接口
 
   // 公共接口
@@ -87,7 +110,9 @@ module.exports = {
   uploadsUrl: ApiRootUrl + 'files/uploads', //上传文件接口
   getClauseDetailUrl: ApiRootUrl + 'common/getClauseDetail', //条款接口
   configDatalUrl: ApiRootUrl + 'configData', //配置数据接口
+  operationAdsUrl: ApiRootUrl + 'ads', //运营广告位接口
 
   //PC
   pcLoginUrl: PcApiRootUrl + 'wx_login', //同意授权PC登录
+  socketUrl: SocketBaseUrl,
 };

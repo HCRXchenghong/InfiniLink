@@ -31,6 +31,7 @@
     "pages/mine/editmine/editmine",
     "pages/mine/feedback/feedback",
     "pages/mine/members/members",
+    "pages/mine/level/level",
     "pages/mine/about/about",
     "pages/mine/follow/follow",
     "pages/clause/clause",
@@ -39,7 +40,7 @@
   "window": {
     "backgroundTextStyle": "light",
     "navigationBarBackgroundColor": "#fff",
-    "navigationBarTitleText": "轻航",
+    "navigationBarTitleText": "InfiniLink",
     "navigationBarTextStyle": "black",
     "enablePullDownRefresh": true,
     "onReachBottomDistance": 50

@@ -28,7 +28,7 @@
       line="{{false}}" color="#949494" />
   </view>
   <view wx:else class="empty-view">
-    <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Filing%20system-pana.png" title="空">
+    <empty-view icon="/backend/static/illustrations/plain-credit-card-cuate.png" title="空">
     </empty-view>
   </view>
 </l-skeleton>

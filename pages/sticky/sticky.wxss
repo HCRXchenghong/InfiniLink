@@ -1,1 +1,5 @@
 @import "/pages/template/circle.wxss";
+
+.detail-ad-wrap {
+  padding: 0 30rpx 36rpx;
+}

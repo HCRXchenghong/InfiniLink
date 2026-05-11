@@ -1,5 +1,12 @@
 // slide-view/slide-view.js
-const _windowWidth = wx.getSystemInfoSync().windowWidth;
+function getCompatSystemInfo() {
+  const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+  const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+  const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+  return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
+const _windowWidth = getCompatSystemInfo().windowWidth || 375;
 Component({
   /**
    * 组件的属性列表

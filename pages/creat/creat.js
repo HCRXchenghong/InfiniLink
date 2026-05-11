@@ -1,5 +1,6 @@
 const common = require('../../mixins/common')
 const forum = require('../../mixins/forum')
+const membership = require('../../utils/membership')
 var app = getApp();
 
 const options = {
@@ -39,12 +40,31 @@ const options = {
     linkName: "",
     linkAdds: "https://",
     cursor: 0,
+    membershipPostPrompt: null,
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad: function (options) {},
+
+  onMembershipPostActionTap(e) {
+    if (!this.data.user) {
+      wx.navigateTo({
+        url: '/pages/login/login',
+      })
+      return;
+    }
+    const action = e.currentTarget.dataset.action;
+    const scene = e.currentTarget.dataset.scene;
+    const route = membership.resolveMembershipActionRoute(action, scene);
+    if (!route) {
+      return;
+    }
+    wx.navigateTo({
+      url: route,
+    })
+  },
 
   // 菜单点击
   onMenuItem: function (e) {
@@ -108,8 +128,9 @@ const options = {
       })
     }
     that.setData({
-      user: userInfo,
+      user: userInfo || null,
       tags: wx.getStorageSync('userSelectedTags'),
+      membershipPostPrompt: membership.buildPostPrompt(userInfo),
     })
     if (userSelectedCircle != '') {
       that.setData({

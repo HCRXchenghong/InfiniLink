@@ -37,6 +37,8 @@ const options = {
     isWithdrawal: true,
     exceptionalList: [],
     isExceptional: true,
+    scrollTop: 0,
+    stickyTop: -1,
   },
 
 

@@ -1,3 +1,10 @@
+function getCompatSystemInfo() {
+    const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+    const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+    const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+    return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
 Component({
     options: {
         multipleSlots: true,
@@ -70,7 +77,8 @@ Component({
     data: {},
     pageLifetimes: {
         show: function show() {
-            if (getApp().globalSystemInfo.ios) {
+            const app = getApp();
+            if (app.globalSystemInfo && app.globalSystemInfo.ios) {
                 this.getSystemInfo();
                 this.setStyle();
                 // 设置样式1
@@ -80,7 +88,8 @@ Component({
     },
     methods: {
         setStyle: function setStyle(life) {
-            var _getApp$globalSystemI = getApp().globalSystemInfo,
+            const cachedSystemInfo = getApp().globalSystemInfo && getApp().globalSystemInfo.capsulePosition ? getApp().globalSystemInfo : this.getSystemInfo();
+            var _getApp$globalSystemI = cachedSystemInfo,
                 statusBarHeight = _getApp$globalSystemI.statusBarHeight,
                 navBarHeight = _getApp$globalSystemI.navBarHeight,
                 capsulePosition = _getApp$globalSystemI.capsulePosition,
@@ -197,10 +206,12 @@ Component({
         },
         getSystemInfo: function getSystemInfo() {
             var app = getApp();
-            if (app.globalSystemInfo && !app.globalSystemInfo.ios) {
+            if (app.globalSystemInfo && app.globalSystemInfo.capsulePosition && !app.globalSystemInfo.ios) {
                 return app.globalSystemInfo;
             } else {
-                var systemInfo = wx.getSystemInfoSync();
+                var systemInfo = getCompatSystemInfo();
+                systemInfo.system = systemInfo.system || "";
+                systemInfo.windowWidth = systemInfo.windowWidth || systemInfo.screenWidth || 375;
                 var ios = !!(systemInfo.system.toLowerCase().search("ios") + 1);
                 var rect = this.getMenuButtonBoundingClientRect(systemInfo);
                 var navBarHeight = "";

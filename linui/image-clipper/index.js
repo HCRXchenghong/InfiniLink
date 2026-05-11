@@ -10,6 +10,14 @@ import {
   imageTouchMoveOfCalcOffset
 } from './calculate';
 const detail = true;
+
+function getCompatSystemInfo() {
+  const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+  const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+  const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+  return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
 // 模拟enum
 const IMAGE_TYPE = {
   base64: 'base64',
@@ -339,7 +347,7 @@ Component({
      */
     setCutCenter() {
       const { sysInfo, clipHeight, clipWidth, imageTop, imageLeft } = this.data;
-      let sys = sysInfo || wx.getSystemInfoSync();
+      let sys = sysInfo || getCompatSystemInfo();
       let cutY = (sys.windowHeight - clipHeight) * 0.5;
       let cutX = (sys.windowWidth - clipWidth) * 0.5;
       this.setData({ 
@@ -463,7 +471,7 @@ Component({
      * 图片初始化
      */
     imageReset() {
-      const sys = this.data._SYS_INFO || wx.getSystemInfoSync();
+      const sys = this.data._SYS_INFO || getCompatSystemInfo();
       this.setData({ scale: 1, angle: 0, imageTop: sys.windowHeight / 2, imageLeft: sys.windowWidth / 2 });
     },
     /**
@@ -804,7 +812,7 @@ Component({
    */
   lifetimes: {
     ready() {
-      const _SYS_INFO = wx.getSystemInfoSync();
+      const _SYS_INFO = getCompatSystemInfo();
       this.setData({ _SYS_INFO });
       this.setCutInfo();
       this.setCutCenter();

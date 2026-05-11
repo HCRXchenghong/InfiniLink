@@ -7,12 +7,12 @@
   <block wx:if="{{isA}}">
     <view class="box">
       <block wx:if="{{alist.authentication_state == 0}}">
-        <image src="http://127.0.0.1/storage/wxprogram/image/People%20search-amico.png"></image>
+        <image src="/backend/static/illustrations/people-search-amico.png"></image>
         <text>认证审核中...</text>
       </block>
       <block wx:else>
         <image
-          src="{{alist.authentication_state == 1?'http://127.0.0.1/storage/wxprogram/image/Confirmed-amico.png':'http://127.0.0.1/storage/wxprogram/image/No%20data-pana.png'}}">
+          src="{{alist.authentication_state == 1?'/backend/static/illustrations/people-search-amico.png':'/backend/static/illustrations/people-search-amico.png'}}">
         </image>
         <text>{{alist.authentication_state == 1?'已认证成功!':'认证被驳回了!'}}</text>
         <text>{{alist.authentication_state == 1?'认证主体：'+alist.name:'驳回原因：'+alist.overrule_content}}</text>
@@ -64,7 +64,7 @@
             </view>
           </view>
         </view>
-        <text class="bottom-tip-text">身份信息证明图片轻航官方承诺仅用于认证审核不做其他用途。</text>
+        <text class="bottom-tip-text">身份信息证明图片InfiniLink 官方承诺仅用于认证审核不做其他用途。</text>
       </view>
       <view bindtap="addAuthentication" class="bottom-button">提交审核</view>
     </view>

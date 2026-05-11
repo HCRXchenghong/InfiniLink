@@ -1,8 +1,199 @@
-"use strict";function e(e,t,n){return t in e?Object.defineProperty(e,t,{value:n,enumerable:!0,configurable:!0,writable:!0}):e[t]=n,e}/*!
- * mp-html v2.1.2
- * https://github.com/jin-yufeng/mp-html
- *
- * Released under the MIT license
- * Author: Jin Yufeng
- */
-var t=require("./parser"),n=[];Component({data:{nodes:[]},properties:{containerStyle:String,content:{type:String,value:"",observer:function(e){this.setContent(e)}},copyLink:{type:Boolean,value:!0},domain:String,errorImg:String,lazyLoad:Boolean,loadingImg:String,pauseVideo:{type:Boolean,value:!0},previewImg:{type:Boolean,value:!0},scrollTable:Boolean,selectable:null,setTitle:{type:Boolean,value:!0},showImgMenu:{type:Boolean,value:!0},tagStyle:Object,useAnchor:null},created:function(){this.plugins=[];for(var e=n.length;e--;)this.plugins.push(new n[e](this))},detached:function(){clearInterval(this._timer),this._hook("onDetached")},methods:{in:function(e,t,n){e&&t&&n&&(this._in={page:e,selector:t,scrollTop:n})},navigateTo:function(t,n){var o=this;return new Promise(function(r,i){if(!o.data.useAnchor)return void i(Error("Anchor is disabled"));var a=wx.createSelectorQuery().in(o._in?o._in.page:o).select((o._in?o._in.selector:"._root")+(t?"".concat(">>>","#").concat(t):"")).boundingClientRect();o._in?a.select(o._in.selector).scrollOffset().select(o._in.selector).boundingClientRect():a.selectViewport().scrollOffset(),a.exec(function(t){if(!t[0])return void i(Error("Label not found"));var a=t[1].scrollTop+t[0].top-(t[2]?t[2].top:0)+(n||parseInt(o.data.useAnchor)||0);o._in?o._in.page.setData(e({},o._in.scrollTop,a)):wx.pageScrollTo({scrollTop:a,duration:300}),r()})})},getText:function(e){var t="";return function e(n){for(var o=0;o<n.length;o++){var r=n[o];if("text"===r.type)t+=r.text.replace(/&amp;/g,"&");else if("br"===r.name)t+="\n";else{var i="p"===r.name||"div"===r.name||"tr"===r.name||"li"===r.name||"h"===r.name[0]&&r.name[1]>"0"&&r.name[1]<"7";i&&t&&"\n"!==t[t.length-1]&&(t+="\n"),r.children&&e(r.children),i&&"\n"!==t[t.length-1]?t+="\n":"td"!==r.name&&"th"!==r.name||(t+="\t")}}}(e||this.data.nodes),t},getRect:function(){var e=this;return new Promise(function(t,n){wx.createSelectorQuery().in(e).select("._root").boundingClientRect().exec(function(e){return e[0]?t(e[0]):n(Error("Root label not found"))})})},setContent:function(e,n){var o=this;this.imgList&&n||(this.imgList=[]),this._videos=[];var r={},i=new t(this).parse(e);if(n)for(var a=this.data.nodes.length,l=i.length;l--;)r["nodes[".concat(a+l,"]")]=i[l];else r.nodes=i;this.setData(r,function(){o._hook("onLoad"),o.triggerEvent("load")});var s;clearInterval(this._timer),this._timer=setInterval(function(){o.getRect().then(function(e){e.height===s&&(o.triggerEvent("ready",e),clearInterval(o._timer)),s=e.height}).catch(function(){})},350)},_hook:function(e){for(var t=n.length;t--;)this.plugins[t][e]&&this.plugins[t][e]()},_add:function(e){e.detail.root=this}}});
+var Parser = require("./parser");
+var plugins = [];
+
+Component({
+  data: {
+    nodes: [],
+  },
+  properties: {
+    containerStyle: String,
+    content: {
+      type: String,
+      value: "",
+      observer: function (value) {
+        this.setContent(value);
+      },
+    },
+    copyLink: {
+      type: Boolean,
+      value: true,
+    },
+    domain: String,
+    errorImg: String,
+    lazyLoad: Boolean,
+    loadingImg: String,
+    pauseVideo: {
+      type: Boolean,
+      value: true,
+    },
+    previewImg: {
+      type: Boolean,
+      value: true,
+    },
+    scrollTable: Boolean,
+    selectable: null,
+    setTitle: {
+      type: Boolean,
+      value: true,
+    },
+    showImgMenu: {
+      type: Boolean,
+      value: true,
+    },
+    tagStyle: Object,
+    useAnchor: null,
+  },
+  created: function () {
+    this.plugins = [];
+    this._destroyed = false;
+    for (var i = plugins.length; i--;) {
+      this.plugins.push(new plugins[i](this));
+    }
+  },
+  detached: function () {
+    this._destroyed = true;
+    clearInterval(this._timer);
+    this._hook("onDetached");
+  },
+  methods: {
+    in: function (page, selector, scrollTopKey) {
+      if (page && selector && scrollTopKey) {
+        this._in = {
+          page: page,
+          selector: selector,
+          scrollTop: scrollTopKey,
+        };
+      }
+    },
+    navigateTo: function (anchorId, offset) {
+      var self = this;
+      return new Promise(function (resolve, reject) {
+        if (!self.data.useAnchor) {
+          reject(Error("Anchor is disabled"));
+          return;
+        }
+
+        var query = wx.createSelectorQuery().in(self._in ? self._in.page : self);
+        query.select((self._in ? self._in.selector : "._root") + (anchorId ? ">>>#" + anchorId : "")).boundingClientRect();
+        if (self._in) {
+          query.select(self._in.selector).scrollOffset().select(self._in.selector).boundingClientRect();
+        } else {
+          query.selectViewport().scrollOffset();
+        }
+
+        query.exec(function (res) {
+          if (!res[0]) {
+            reject(Error("Label not found"));
+            return;
+          }
+
+          var targetScrollTop = res[1].scrollTop + res[0].top - (res[2] ? res[2].top : 0) + (offset || parseInt(self.data.useAnchor) || 0);
+          if (self._in) {
+            var update = {};
+            update[self._in.scrollTop] = targetScrollTop;
+            self._in.page.setData(update);
+          } else {
+            wx.pageScrollTo({
+              scrollTop: targetScrollTop,
+              duration: 300,
+            });
+          }
+          resolve();
+        });
+      });
+    },
+    getText: function (nodes) {
+      var text = "";
+
+      function walk(list) {
+        for (var i = 0; i < list.length; i++) {
+          var node = list[i];
+          if (node.type === "text") {
+            text += node.text.replace(/&amp;/g, "&");
+          } else if (node.name === "br") {
+            text += "\n";
+          } else {
+            var isBlock = node.name === "p" || node.name === "div" || node.name === "tr" || node.name === "li" || (node.name[0] === "h" && node.name[1] > "0" && node.name[1] < "7");
+            if (isBlock && text && text[text.length - 1] !== "\n") {
+              text += "\n";
+            }
+            if (node.children) {
+              walk(node.children);
+            }
+            if (isBlock) {
+              if (text[text.length - 1] !== "\n") {
+                text += "\n";
+              }
+            } else if (node.name === "td" || node.name === "th") {
+              text += "\t";
+            }
+          }
+        }
+      }
+
+      walk(nodes || this.data.nodes);
+      return text;
+    },
+    getRect: function () {
+      var self = this;
+      return new Promise(function (resolve, reject) {
+        wx.createSelectorQuery().in(self).select("._root").boundingClientRect().exec(function (res) {
+          if (res[0]) {
+            resolve(res[0]);
+          } else {
+            reject(Error("Root label not found"));
+          }
+        });
+      });
+    },
+    setContent: function (content, append) {
+      var self = this;
+      this._destroyed = false;
+      if (!this.imgList || !append) {
+        this.imgList = [];
+      }
+      this._videos = [];
+
+      var update = {};
+      var nodes = new Parser(this).parse(content);
+      if (append) {
+        for (var i = nodes.length; i--;) {
+          update["nodes[" + (this.data.nodes.length + i) + "]"] = nodes[i];
+        }
+      } else {
+        update.nodes = nodes;
+      }
+
+      this.setData(update, function () {
+        self._hook("onLoad");
+        self.triggerEvent("load");
+      });
+
+      var heightCache;
+      clearInterval(this._timer);
+      this._timer = setInterval(function () {
+        if (self._destroyed) {
+          clearInterval(self._timer);
+          return;
+        }
+        self.getRect().then(function (rect) {
+          if (rect.height === heightCache) {
+            self.triggerEvent("ready", rect);
+            clearInterval(self._timer);
+          }
+          heightCache = rect.height;
+        }).catch(function () {});
+      }, 350);
+    },
+    _hook: function (name) {
+      for (var i = plugins.length; i--;) {
+        if (this.plugins[i][name]) {
+          this.plugins[i][name]();
+        }
+      }
+    },
+    _add: function (event) {
+      event.detail.root = this;
+    },
+  },
+});

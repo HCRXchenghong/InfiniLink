@@ -9,6 +9,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ type orderRequest struct {
 	Type           int             `json:"type"`
 	Parame         json.RawMessage `json:"parame"`
 	PaymentMethod  string          `json:"payment_method"`
+	SubMethod      string          `json:"sub_method"`
 	Platform       string          `json:"platform"`
 	IdempotencyKey string          `json:"idempotency_key"`
 	Description    string          `json:"description"`
@@ -28,6 +30,10 @@ type rewardOrderMeta struct {
 	RewardPrice float64 `json:"rewardPrice"`
 	PostsID     int64   `json:"postsId"`
 	PostsUserID int64   `json:"postsUserId"`
+}
+
+type membershipOrderMeta struct {
+	PlanCode string `json:"plan_code"`
 }
 
 type orderRow struct {
@@ -66,9 +72,15 @@ func (s *Server) handlePaymentOptions(w http.ResponseWriter, r *http.Request) {
 		},
 		{
 			"value":   "ifpay",
-			"label":   "IF-Pay 余额支付",
-			"enabled": strings.TrimSpace(s.cfg.IfPayBaseURL) != "",
-			"tip":     "走 Infinitech 钱包支付中心",
+			"label":   "IF-Pay 聚合支付",
+			"enabled": s.ifPayReady(),
+			"tip":     "走 Infinitech 正式 IF-Pay 协议",
+			"sub_methods": []string{
+				"wechat",
+				"ifpay_balance",
+				"alipay",
+				"usdt",
+			},
 		},
 	}
 	s.respond(w, map[string]any{
@@ -135,6 +147,33 @@ func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if method == "ifpay" {
+		if !s.ifPayReady() {
+			s.respondError(w, http.StatusServiceUnavailable, "IF-Pay 正式协议配置未完成")
+			return
+		}
+		if _, err := s.ensureIfPayAccessToken(ctx, userID); err != nil {
+			if errors.Is(err, errIfPayOAuthRequired) {
+				authURL, authErr := s.buildIFPayAuthorizeURL(userID, "")
+				if authErr != nil {
+					s.respondError(w, http.StatusInternalServerError, "生成 IF-Pay 授权地址失败")
+					return
+				}
+				s.respond(w, map[string]any{
+					"gateway":             "ifpay",
+					"payment_method":      "ifpay",
+					"sub_method":          normalizeIfPaySubMethod(payload.SubMethod, platform),
+					"status":              "requires_oauth_bind",
+					"oauth_bind_required": true,
+					"auth_url":            authURL,
+				}, "ok")
+				return
+			}
+			s.respondError(w, http.StatusBadGateway, "校验 IF-Pay 用户授权失败")
+			return
+		}
+	}
+
 	orderNumber := s.newOrderNumber()
 	order, err := s.insertOrder(ctx, userID, orderNumber, payload.Type, price, postsID, method, idempotencyKey, meta)
 	if err != nil {
@@ -152,20 +191,57 @@ func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.cfg.PaymentMockPaid {
+		mockPayload := map[string]any{
+			"gateway":        "mock",
+			"mockPaid":       true,
+			"status":         "paid",
+			"order_number":   order.OrderNumber,
+			"payment_method": method,
+			"description":    firstNonEmpty(payload.Description, description),
+		}
+		if err := s.persistOrderIntent(ctx, order.OrderNumber, "mock", order.OrderNumber, mockPayload); err != nil {
+			s.respondError(w, 500, "写入模拟支付结果失败")
+			return
+		}
+		if err := s.markOrderPaid(ctx, order.OrderNumber, "mock", order.OrderNumber, mockPayload); err != nil {
+			s.markOrderFailed(ctx, order.OrderNumber, "mock", err.Error())
+			s.respondError(w, 500, "确认模拟支付失败")
+			return
+		}
+		s.respond(w, mockPayload, "ok")
+		return
+	}
+
 	switch method {
 	case "ifpay":
-		result, err := s.createIfPayIntent(ctx, userID, order, platform, firstNonEmpty(payload.Description, description))
+		result, err := s.createIfPayIntent(ctx, userID, order, platform, payload.SubMethod, firstNonEmpty(payload.Description, description))
 		if err != nil {
+			if errors.Is(err, errIfPayOAuthRequired) {
+				authURL, authErr := s.buildIFPayAuthorizeURL(userID, "")
+				if authErr == nil {
+					s.respond(w, map[string]any{
+						"gateway":             "ifpay",
+						"payment_method":      "ifpay",
+						"sub_method":          normalizeIfPaySubMethod(payload.SubMethod, platform),
+						"status":              "requires_oauth_bind",
+						"oauth_bind_required": true,
+						"auth_url":            authURL,
+						"order_number":        order.OrderNumber,
+					}, "ok")
+					return
+				}
+			}
 			s.markOrderFailed(ctx, order.OrderNumber, method, err.Error())
 			s.respondError(w, 502, err.Error())
 			return
 		}
-		if err := s.persistOrderIntent(ctx, order.OrderNumber, method, firstNonEmpty(anyString(result["third_party_order_id"]), order.OrderNumber), result); err != nil {
+		if err := s.persistOrderIntent(ctx, order.OrderNumber, method, firstNonEmpty(anyString(result["payment_id"]), anyString(result["third_party_order_id"]), order.OrderNumber), result); err != nil {
 			s.respondError(w, 500, "写入支付结果失败")
 			return
 		}
 		if isImmediateSuccess(anyString(result["status"])) {
-			if err := s.markOrderPaid(ctx, order.OrderNumber, method, firstNonEmpty(anyString(result["third_party_order_id"]), order.OrderNumber), result); err != nil {
+			if err := s.markOrderPaid(ctx, order.OrderNumber, method, firstNonEmpty(anyString(result["payment_id"]), anyString(result["third_party_order_id"]), order.OrderNumber), result); err != nil {
 				s.respondError(w, 500, "确认订单失败")
 				return
 			}
@@ -189,13 +265,53 @@ func (s *Server) handleOrder(w http.ResponseWriter, r *http.Request) {
 func (s *Server) buildOrderSpec(ctx context.Context, userID int64, payload orderRequest) (float64, int64, map[string]any, string, error) {
 	switch payload.Type {
 	case 1:
-		var isMember bool
-		if err := s.db.QueryRow(ctx, `SELECT COALESCE(is_member, FALSE) FROM users WHERE id = $1`, userID).Scan(&isMember); err == nil && isMember {
-			return 0, 0, nil, "", errors.New("你已经是会员了")
+		var (
+			isMember    bool
+			memberTier  sql.NullString
+			expiresAt   sql.NullTime
+			orderMeta   membershipOrderMeta
+			currentTier string
+		)
+		_ = json.Unmarshal(payload.Parame, &orderMeta)
+		if err := s.db.QueryRow(ctx, `SELECT COALESCE(is_member, FALSE), COALESCE(membership_tier, ''), membership_expires_at FROM users WHERE id = $1`, userID).Scan(&isMember, &memberTier, &expiresAt); err == nil {
+			currentTier = resolveMembershipState(isMember, memberTier.String, expiresAt, time.Now()).Tier
 		}
-		return s.cfg.MembershipPrice, 0, map[string]any{
-			"scene": "membership",
-		}, "InfiniLink 会员开通", nil
+
+		plans, err := s.getMembershipPlans(ctx)
+		if err != nil {
+			return 0, 0, nil, "", errors.New("获取会员方案失败")
+		}
+		planCode := normalizeMembershipTier(orderMeta.PlanCode)
+		if planCode == "" {
+			planCode = membershipTierPro
+		}
+		plan, ok := membershipPlanByCode(plans, planCode)
+		if !ok || !plan.Enabled {
+			return 0, 0, nil, "", errors.New("当前会员方案暂不可购买")
+		}
+
+		if currentTier != "" {
+			if membershipTierRank(currentTier) > membershipTierRank(plan.Code) {
+				return 0, 0, nil, "", errors.New("你已是更高等级会员，无需重复开通")
+			}
+			if currentTier == plan.Code {
+				return 0, 0, nil, "", errors.New("你已经开通该会员方案")
+			}
+		}
+
+		description := fmt.Sprintf("InfiniLink %s 会员开通", plan.Name)
+		if membershipTierRank(currentTier) > 0 && membershipTierRank(plan.Code) > membershipTierRank(currentTier) {
+			description = fmt.Sprintf("InfiniLink %s 会员升级", plan.Name)
+		}
+		return plan.Price, 0, map[string]any{
+			"scene":              "membership",
+			"membership_plan":    plan.Code,
+			"membership_name":    plan.Name,
+			"membership_price":   plan.Price,
+			"membership_days":    membershipDurationDays(plan),
+			"previous_tier":      currentTier,
+			"previous_tier_rank": membershipTierRank(currentTier),
+		}, description, nil
 	case 2:
 		var reward rewardOrderMeta
 		if err := json.Unmarshal(payload.Parame, &reward); err != nil {
@@ -293,6 +409,21 @@ func (s *Server) respondExistingOrder(w http.ResponseWriter, order orderRow) {
 			return
 		}
 		s.respond(w, payload, "ok")
+	case "ifpay":
+		if len(order.PaymentPayload) > 0 {
+			var payload map[string]any
+			if err := json.Unmarshal(order.PaymentPayload, &payload); err == nil && len(payload) > 0 {
+				s.respond(w, payload, "ok")
+				return
+			}
+		}
+		s.respond(w, map[string]any{
+			"order_number":      order.OrderNumber,
+			"status":            order.Status,
+			"provider":          order.Provider,
+			"provider_order_id": nullableString(order.ProviderOrderID),
+			"paid_at":           nullableTime(order.PaidAt),
+		}, "ok")
 	default:
 		s.respond(w, map[string]any{
 			"order_number":      order.OrderNumber,
@@ -382,7 +513,17 @@ func (s *Server) markOrderPaid(ctx context.Context, orderNumber, provider, provi
 
 	switch orderType {
 	case 1:
-		if _, err := tx.Exec(ctx, `UPDATE users SET is_member = TRUE, updated_at = NOW() WHERE id = $1`, userID); err != nil {
+		var meta map[string]any
+		_ = json.Unmarshal(paymentMeta, &meta)
+		nextTier := normalizeMembershipTier(fmt.Sprint(meta["membership_plan"]))
+		if nextTier == "" {
+			nextTier = membershipTierPro
+		}
+		durationDays := sanitizeMembershipDurationDays(nextTier, parseInt(fmt.Sprint(meta["membership_days"]), 0))
+		if _, err := s.applyMembershipToUserTx(ctx, tx, userID, nextTier, durationDays); err != nil {
+			return err
+		}
+		if err := s.recordMembershipPurchaseBonusTx(ctx, tx, userID, orderID, nextTier); err != nil {
 			return err
 		}
 	case 2:
@@ -396,7 +537,7 @@ func (s *Server) markOrderPaid(ctx context.Context, orderNumber, provider, provi
 			if _, err := tx.Exec(ctx, `
 				INSERT INTO post_rewards(order_id, post_id, from_user_id, to_user_id, exceptional_price)
 				VALUES ($1, $2, $3, $4, $5)
-				ON CONFLICT (order_id) DO NOTHING
+				ON CONFLICT DO NOTHING
 			`, orderID, postsID.Int64, userID, postOwnerID, price); err != nil {
 				return err
 			}
@@ -427,44 +568,130 @@ func (s *Server) handleIFPayNotify(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	if secret := strings.TrimSpace(s.cfg.IfPayNotifySecret); secret != "" && strings.TrimSpace(r.Header.Get("X-IFPAY-SECRET")) != secret {
+	timestamp := strings.TrimSpace(r.Header.Get(ifPayHeaderTimestamp))
+	nonce := strings.TrimSpace(r.Header.Get(ifPayHeaderNonce))
+	digest := strings.TrimSpace(r.Header.Get(ifPayHeaderDigest))
+	signature := strings.TrimSpace(r.Header.Get(ifPayHeaderSignature))
+	serial := strings.TrimSpace(r.Header.Get(ifPayHeaderSerial))
+
+	if s.ifPayWebhookReady() {
+		tsValue, parseErr := strconv.ParseInt(timestamp, 10, 64)
+		if parseErr != nil || time.Since(time.Unix(tsValue, 0)) > ifPayWebhookSkew || time.Since(time.Unix(tsValue, 0)) < -ifPayWebhookSkew {
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+		if !ifPayVerifyDigest(digest, rawBody) {
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+		if expectedSerial := strings.TrimSpace(s.cfg.IfPayWebhookSerial); expectedSerial != "" && expectedSerial != serial {
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+		if s.redis != nil && nonce != "" {
+			ok, redisErr := s.redis.SetNX(r.Context(), cacheKey("ifpay", "webhook", "nonce", nonce), "1", ifPayWebhookSkew).Result()
+			if redisErr != nil || !ok {
+				writePaymentCallbackAck(w, "ifpay", false)
+				return
+			}
+		}
+		requestPath := r.URL.EscapedPath()
+		if r.URL.RawQuery != "" {
+			requestPath += "?" + r.URL.RawQuery
+		}
+		canonical := ifPayCanonicalMessage(http.MethodPost, requestPath, timestamp, nonce, digest)
+		if err := ifPayVerifyRSASignature(s.cfg.IfPayWebhookPublicKeyPEM, canonical, signature); err != nil {
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+	} else if secret := strings.TrimSpace(s.cfg.IfPayNotifySecret); secret != "" {
+		if strings.TrimSpace(r.Header.Get("X-IFPAY-SECRET")) != secret {
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+	} else {
 		writePaymentCallbackAck(w, "ifpay", false)
 		return
 	}
 
-	var payload map[string]any
-	if err := json.Unmarshal(rawBody, &payload); err != nil {
+	var event ifPayWebhookEvent
+	if err := json.Unmarshal(rawBody, &event); err != nil {
 		writePaymentCallbackAck(w, "ifpay", false)
+		return
+	}
+	if event.Data == nil {
+		event.Data = map[string]any{}
+	}
+	if strings.TrimSpace(event.EventID) == "" && strings.TrimSpace(event.EventType) == "" && strings.TrimSpace(event.ResourceID) == "" {
+		payload := map[string]any{}
+		if err := json.Unmarshal(rawBody, &payload); err == nil {
+			event.Data = payload
+			event.EventID = firstNonEmpty(anyString(payload["event_id"]), anyString(payload["id"]), stableHash("ifpay", string(rawBody)))
+			event.EventType = firstNonEmpty(anyString(payload["event_type"]), anyString(payload["event"]), inferIfPayEventType(anyString(payload["status"])))
+			event.ResourceType = firstNonEmpty(anyString(payload["resource_type"]), "payment")
+			event.ResourceID = firstNonEmpty(anyString(payload["payment_id"]), anyString(payload["transaction_id"]), anyString(payload["transactionId"]))
+			if occurredAt := parseIfPayTime(payload["occurred_at"]); occurredAt != nil {
+				event.OccurredAt = *occurredAt
+			}
+		}
+	}
+	if strings.TrimSpace(event.EventID) == "" {
+		event.EventID = firstNonEmpty(anyString(event.Data["event_id"]), anyString(event.Data["id"]))
+	}
+	if event.EventType == "" {
+		event.EventType = firstNonEmpty(anyString(event.Data["event_type"]), anyString(event.Data["event"]))
+	}
+	if event.ResourceType == "" {
+		event.ResourceType = firstNonEmpty(anyString(event.Data["resource_type"]), "payment")
+	}
+	if event.ResourceID == "" {
+		event.ResourceID = firstNonEmpty(anyString(event.Data["payment_id"]), anyString(event.Data["transaction_id"]))
+	}
+	if strings.TrimSpace(event.EventID) == "" {
+		writePaymentCallbackAck(w, "ifpay", false)
+		return
+	}
+
+	duplicated, callbackID, callbackErr := s.recordIFPayWebhookCallback(r.Context(), event, rawBody)
+	if callbackErr != nil {
+		writePaymentCallbackAck(w, "ifpay", false)
+		return
+	}
+	if duplicated {
+		writePaymentCallbackAck(w, "ifpay", true)
 		return
 	}
 
 	orderNumber := firstNonEmpty(
-		anyString(payload["orderNumber"]),
-		anyString(payload["order_number"]),
-		anyString(payload["orderId"]),
-		anyString(payload["order_id"]),
-		anyString(payload["outTradeNo"]),
+		anyString(event.Data["order_id"]),
+		anyString(event.Data["order_number"]),
+		anyString(event.Data["out_trade_no"]),
 	)
-	status := strings.ToLower(strings.TrimSpace(firstNonEmpty(
-		anyString(payload["status"]),
-		anyString(payload["tradeStatus"]),
-		anyString(payload["trade_status"]),
-	)))
-	success := toBool(payload["success"]) || isImmediateSuccess(status)
-	callbackID, _ := s.recordPaymentCallback(r.Context(), "ifpay", orderNumber, firstNonEmpty(anyString(payload["providerOrderId"]), anyString(payload["provider_order_id"])), firstNonEmpty(anyString(payload["event"]), status), success, rawBody)
-	if success && orderNumber != "" {
-		if err := s.markOrderPaid(r.Context(), orderNumber, "ifpay", firstNonEmpty(anyString(payload["providerOrderId"]), anyString(payload["provider_order_id"])), payload); err != nil {
+	status := strings.ToLower(strings.TrimSpace(firstNonEmpty(anyString(event.Data["status"]), event.EventType)))
+	switch strings.ToLower(strings.TrimSpace(event.EventType)) {
+	case "ifpay.payment.completed", "payment.succeeded", "payment.completed":
+		if orderNumber == "" {
+			s.finishPaymentCallback(r.Context(), callbackID, "failed", "missing order_id")
+			writePaymentCallbackAck(w, "ifpay", false)
+			return
+		}
+		if err := s.markOrderPaid(r.Context(), orderNumber, "ifpay", firstNonEmpty(anyString(event.Data["payment_id"]), anyString(event.Data["transaction_id"]), event.ResourceID), event.Data); err != nil {
 			s.finishPaymentCallback(r.Context(), callbackID, "failed", err.Error())
 			writePaymentCallbackAck(w, "ifpay", false)
 			return
 		}
 		s.finishPaymentCallback(r.Context(), callbackID, "success", "")
 		writePaymentCallbackAck(w, "ifpay", true)
-		return
+	case "ifpay.payment.rejected", "payment.failed":
+		if orderNumber != "" {
+			s.markOrderFailed(r.Context(), orderNumber, "ifpay", firstNonEmpty(status, "ifpay payment rejected"))
+		}
+		s.finishPaymentCallback(r.Context(), callbackID, "success", "")
+		writePaymentCallbackAck(w, "ifpay", true)
+	default:
+		s.finishPaymentCallback(r.Context(), callbackID, "ignored", event.EventType)
+		writePaymentCallbackAck(w, "ifpay", true)
 	}
-
-	s.finishPaymentCallback(r.Context(), callbackID, "failed", firstNonEmpty(status, "callback rejected"))
-	writePaymentCallbackAck(w, "ifpay", false)
 }
 
 func writePaymentCallbackAck(w http.ResponseWriter, channel string, success bool) {
@@ -496,6 +723,26 @@ func (s *Server) recordPaymentCallback(ctx context.Context, provider, orderNumbe
 	return callbackID, err
 }
 
+func (s *Server) recordIFPayWebhookCallback(ctx context.Context, event ifPayWebhookEvent, rawBody []byte) (bool, int64, error) {
+	var callbackID int64
+	err := s.db.QueryRow(ctx, `
+		INSERT INTO payment_callbacks(provider, event_id, order_number, provider_order_id, event_type, verified, process_status, payload)
+		VALUES ('ifpay', $1, $2, $3, $4, TRUE, 'processing', $5::jsonb)
+		ON CONFLICT DO NOTHING
+		RETURNING id
+	`, strings.TrimSpace(event.EventID), firstNonEmpty(anyString(event.Data["order_id"]), anyString(event.Data["order_number"])), firstNonEmpty(anyString(event.Data["payment_id"]), anyString(event.Data["transaction_id"]), strings.TrimSpace(event.ResourceID)), strings.TrimSpace(event.EventType), string(rawBody)).Scan(&callbackID)
+	if err == nil {
+		return false, callbackID, nil
+	}
+	if errors.Is(err, sql.ErrNoRows) || strings.Contains(strings.ToLower(err.Error()), "no rows") {
+		if err := s.db.QueryRow(ctx, `SELECT id FROM payment_callbacks WHERE provider = 'ifpay' AND event_id = $1 LIMIT 1`, strings.TrimSpace(event.EventID)).Scan(&callbackID); err != nil {
+			return true, 0, err
+		}
+		return true, callbackID, nil
+	}
+	return false, 0, err
+}
+
 func (s *Server) finishPaymentCallback(ctx context.Context, callbackID int64, status, errMsg string) {
 	if callbackID == 0 {
 		return
@@ -514,73 +761,137 @@ func callbackProcessStatus(verified bool) string {
 	return "failed"
 }
 
-func (s *Server) createIfPayIntent(ctx context.Context, userID int64, order orderRow, platform, description string) (map[string]any, error) {
-	if strings.TrimSpace(s.cfg.IfPayBaseURL) == "" {
-		return nil, errors.New("IF-Pay 未配置，请先设置 IF_PAY_BASE_URL")
+func (s *Server) createIfPayIntent(ctx context.Context, userID int64, order orderRow, platform, subMethod, description string) (map[string]any, error) {
+	if !s.ifPayReady() {
+		return nil, errors.New("IF-Pay 正式协议配置未完成")
+	}
+	accessToken, err := s.ensureIfPayAccessToken(ctx, userID)
+	if err != nil {
+		if errors.Is(err, errIfPayOAuthRequired) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("校验 IF-Pay 用户授权失败: %w", err)
 	}
 
-	body := map[string]any{
-		"userId":         formatInt64(userID),
-		"userType":       "customer",
-		"platform":       platform,
-		"orderId":        order.OrderNumber,
+	requestBody := map[string]any{
+		"payment_method": "ifpay",
+		"sub_method":     normalizeIfPaySubMethod(subMethod, platform),
+		"order_id":       order.OrderNumber,
 		"amount":         moneyToCents(order.OrderPayPrice),
-		"paymentMethod":  "ifpay",
-		"paymentChannel": "ifpay",
-		"description":    firstNonEmpty(description, "InfiniLink 订单支付"),
-		"idempotencyKey": nullableString(order.IdempotencyKey),
+		"currency":       "CNY",
+		"platform":       platform,
+		"description":    firstNonEmpty(description, defaultPaymentDescription(order.OrderType)),
+		"metadata": map[string]any{
+			"scene":        fmt.Sprintf("order_type_%d", order.OrderType),
+			"user_id":      userID,
+			"order_number": order.OrderNumber,
+			"provider":     "infinilink",
+		},
 	}
-
-	payloadJSON, _ := json.Marshal(body)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, joinURLPath(s.cfg.IfPayBaseURL, s.cfg.IfPayCreatePath), strings.NewReader(string(payloadJSON)))
+	payloadJSON, err := json.Marshal(requestBody)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
-	if secret := strings.TrimSpace(s.cfg.IfPayAPISecret); secret != "" {
-		req.Header.Set("X-IFPAY-SECRET", secret)
+
+	fullURL := joinURLPath(s.cfg.IfPayBaseURL, s.cfg.IfPayCreatePath)
+	requestPath, err := s.ifPaySignedPath(fullURL)
+	if err != nil {
+		return nil, err
+	}
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	nonce, err := ifPayGenerateNonce(16)
+	if err != nil {
+		return nil, err
+	}
+	digest := ifPayBuildDigest(payloadJSON)
+	canonical := ifPayCanonicalMessage(http.MethodPost, requestPath, timestamp, nonce, digest)
+	signature, err := ifPaySignRSASignature(s.cfg.IfPayPrivateKeyPEM, canonical)
+	if err != nil {
+		return nil, err
 	}
 
-	client := &http.Client{Timeout: s.cfg.IfPayTimeout}
-	resp, err := client.Do(req)
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, fullURL, strings.NewReader(string(payloadJSON)))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+strings.TrimSpace(accessToken))
+	request.Header.Set(ifPayHeaderAppID, strings.TrimSpace(s.cfg.IfPayAppID))
+	request.Header.Set(ifPayHeaderSerial, strings.TrimSpace(s.cfg.IfPaySigningSerial))
+	request.Header.Set(ifPayHeaderTimestamp, timestamp)
+	request.Header.Set(ifPayHeaderNonce, nonce)
+	request.Header.Set(ifPayHeaderDigest, digest)
+	request.Header.Set(ifPayHeaderSignature, signature)
+	request.Header.Set(ifPayHeaderIdempotency, firstNonEmpty(nullableString(order.IdempotencyKey), stableHash("ifpay", order.OrderNumber)))
+
+	response, err := s.httpClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("请求 IF-Pay 失败: %w", err)
 	}
-	defer resp.Body.Close()
+	defer response.Body.Close()
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(response.Body, 4*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("读取 IF-Pay 响应失败: %w", err)
 	}
-
-	var envelope ifPayResponseEnvelope
-	if err := json.Unmarshal(raw, &envelope); err != nil {
-		return nil, fmt.Errorf("解析 IF-Pay 响应失败: %w", err)
+	if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+		s.clearIfPayToken(ctx, userID)
+		return nil, errIfPayOAuthRequired
+	}
+	upstream, err := parseIfPayEnvelope(response.StatusCode, raw)
+	if err != nil {
+		if response.StatusCode == http.StatusUnauthorized || strings.Contains(strings.ToLower(err.Error()), "unauthorized") {
+			s.clearIfPayToken(ctx, userID)
+			return nil, errIfPayOAuthRequired
+		}
+		return nil, err
 	}
 
-	if resp.StatusCode >= http.StatusBadRequest || (!envelope.Success && strings.TrimSpace(strings.ToLower(fmt.Sprint(envelope.Code))) != "ok") {
-		return nil, errors.New(firstNonEmpty(envelope.Message, "IF-Pay 支付失败"))
+	result := map[string]any{
+		"gateway":              "ifpay",
+		"payment_method":       "ifpay",
+		"sub_method":           normalizeIfPaySubMethod(anyString(upstream["sub_method"]), platform),
+		"status":               firstNonEmpty(anyString(upstream["status"]), "pending"),
+		"order_number":         order.OrderNumber,
+		"payment_id":           firstNonEmpty(anyString(upstream["payment_id"]), anyString(upstream["transactionId"]), anyString(upstream["transaction_id"])),
+		"third_party_order_id": firstNonEmpty(anyString(upstream["third_party_order_id"]), anyString(upstream["thirdPartyOrderId"]), anyString(upstream["payment_id"]), anyString(upstream["transactionId"]), anyString(upstream["transaction_id"])),
+		"provider":             "ifpay",
 	}
-
-	result := map[string]any{}
-	if len(envelope.Data) > 0 {
-		_ = json.Unmarshal(envelope.Data, &result)
+	if payload, ok := upstream["paymentPayload"].(map[string]any); ok && len(payload) > 0 {
+		result["payment_payload"] = payload
+		if result["sub_method"] == "" {
+			result["sub_method"] = normalizeIfPaySubMethod(anyString(payload["gateway"]), platform)
+		}
+		for _, key := range []string{"timeStamp", "nonceStr", "package", "signType", "paySign", "appId", "prepayId"} {
+			if _, exists := result[key]; !exists && payload[key] != nil {
+				result[key] = payload[key]
+			}
+		}
 	}
-	if len(result) == 0 {
-		result["status"] = firstNonEmpty(fmt.Sprint(envelope.Status), "success")
+	if payload, ok := upstream["clientPayload"].(map[string]any); ok && len(payload) > 0 {
+		result["payment_payload"] = payload
+		for _, key := range []string{"timeStamp", "nonceStr", "package", "signType", "paySign", "appId", "prepayId"} {
+			if _, exists := result[key]; !exists && payload[key] != nil {
+				result[key] = payload[key]
+			}
+		}
 	}
-	if _, ok := result["paymentMethod"]; !ok {
-		result["paymentMethod"] = "ifpay"
+	if upstreamGateway := firstNonEmpty(anyString(upstream["gateway"]), anyString(upstream["paymentMethod"])); upstreamGateway != "" {
+		result["upstream_gateway"] = upstreamGateway
 	}
-	if _, ok := result["gateway"]; !ok {
-		result["gateway"] = "ifpay"
+	if result["payment_id"] == "" {
+		result["payment_id"] = order.OrderNumber
 	}
-	if _, ok := result["third_party_order_id"]; !ok {
-		result["third_party_order_id"] = firstNonEmpty(
-			anyString(result["thirdPartyOrderId"]),
-			anyString(result["transactionId"]),
-			order.OrderNumber,
-		)
+	if result["third_party_order_id"] == "" {
+		result["third_party_order_id"] = result["payment_id"]
+	}
+	if strings.TrimSpace(anyString(result["sub_method"])) == "" {
+		result["sub_method"] = normalizeIfPaySubMethod(subMethod, platform)
+	}
+	if payload, ok := result["payment_payload"].(map[string]any); ok {
+		if _, hasGateway := payload["gateway"]; hasGateway {
+			result["client_gateway"] = payload["gateway"]
+		}
 	}
 	return result, nil
 }
@@ -691,6 +1002,17 @@ func anyString(value any) string {
 		return ""
 	}
 	return text
+}
+
+func inferIfPayEventType(status string) string {
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "success", "completed", "paid":
+		return "ifpay.payment.completed"
+	case "failed", "rejected", "closed":
+		return "ifpay.payment.rejected"
+	default:
+		return "ifpay.payment.updated"
+	}
 }
 
 func joinURLPath(baseURL, path string) string {

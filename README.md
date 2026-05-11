@@ -18,6 +18,8 @@ InfiniLink is a WeChat Mini Program codebase for a community-style product. The 
 - Frontend mini program pages and components
 - Standalone Go + PostgreSQL backend in `backend/`
 - Login, content feed, circles, messaging, profile, search, payment entry flows
+- Admin console UI under `admin-console/`
+- Realtime websocket service under `realtime/`
 - WeChat project config files
 
 ## What Is Missing
@@ -39,9 +41,9 @@ The frontend depends on `/api/v1/*` endpoints. Those are now implemented in the 
 
 ## Important Handover Notes
 
-- The current branding inside the code still uses `轻航`.
+- The current branding inside the code has been switched to `InfiniLink`.
 - `project.config.json` still contains the previous Mini Program `appid`.
-- Several UI assets are still referenced from `http://127.0.0.1/storage/...`; the backend now includes a compatibility fallback, but you should still migrate them to your own asset host.
+- Several UI assets now use local project resources for Mini Program preview; production should still move these to your own HTTPS asset host.
 - Payment flows still require real WeChat Pay integration.
 
 ## Suggested Next Steps
@@ -51,3 +53,8 @@ The frontend depends on `/api/v1/*` endpoints. Those are now implemented in the 
 3. Move hardcoded remote image assets to your own domain.
 4. Add an environment-based config layer for dev, test, and prod.
 5. Add basic regression testing and a release checklist.
+
+## Release Versions
+
+- `v1.0.0`: repository baseline before the current full-stack integration update
+- `v1.0.1`: current integrated release with backend, admin console, realtime service, membership, growth, moderation, and IF-Pay protocol wiring

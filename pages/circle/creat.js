@@ -20,7 +20,7 @@ const options = {
     imageAvatar: null,
     type: '',
     protocolChecked: false,
-    tisi: "创建圈子前请先联系轻航官方获取更多圈子规范和建议，可大大提升通过率。",
+    tisi: "创建圈子前请先联系 InfiniLink 官方获取更多圈子规范和建议，可大大提升通过率。",
     imageAvatarClipper: false,
     imagesubjectClipper: false,
     pic: "",

@@ -83,6 +83,10 @@ type postCore struct {
 	UserOfficial     bool
 	UserAuth         bool
 	UserMember       bool
+	UserMemberTier   sql.NullString
+	UserMemberExpiry sql.NullTime
+	UserLevelNo      int64
+	UserLevelScore   int64
 	CircleName       sql.NullString
 	LikeCount        int64
 	CommentCount     int64
@@ -91,6 +95,19 @@ type postCore struct {
 	IsCollect        bool
 	IsFollowUser     bool
 	IsMyPosts        bool
+}
+
+type circleCore struct {
+	ID          int64
+	UserID      int64
+	PlateID     int64
+	Name        string
+	Introduce   sql.NullString
+	Head        sql.NullString
+	Background  sql.NullString
+	PostCount   int64
+	FollowCount int64
+	IsFollow    bool
 }
 
 func (s *Server) fetchOrCreateUser(ctx context.Context, payload loginRequest) (int64, error) {
@@ -104,7 +121,7 @@ func (s *Server) fetchOrCreateUser(ctx context.Context, payload loginRequest) (i
 		avatar = s.assetURL("avatar-default.svg")
 	}
 
-	background := s.assetURL("profile-cover.svg")
+	background := s.assetURL("illustrations/world-rafiki.png")
 	wechatOpenID, err := s.exchangeWeChatCode(ctx, payload.Code)
 	if err != nil {
 		return 0, err
@@ -128,13 +145,15 @@ func (s *Server) fetchOrCreateUser(ctx context.Context, payload loginRequest) (i
 			user_introduce,
 			is_official,
 			is_authentication,
-			is_member
-		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, FALSE, FALSE, FALSE)
+			is_member,
+			last_login_at
+		) VALUES ($1, NULLIF($2, ''), $3, $4, $5, $6, FALSE, FALSE, FALSE, NOW())
 		ON CONFLICT (external_key) DO UPDATE
 		SET
 			wechat_openid = COALESCE(NULLIF(EXCLUDED.wechat_openid, ''), users.wechat_openid),
 			user_name = COALESCE(NULLIF(EXCLUDED.user_name, ''), users.user_name),
 			user_avatar = COALESCE(NULLIF(EXCLUDED.user_avatar, ''), users.user_avatar),
+			last_login_at = NOW(),
 			updated_at = NOW()
 		RETURNING id
 	`, externalKey, wechatOpenID, nick, avatar, background, "欢迎来到 InfiniLink").Scan(&id)
@@ -152,9 +171,17 @@ func (s *Server) buildSelfUser(ctx context.Context, userID int64) (map[string]an
 			isOfficial    bool
 			isAuth        bool
 			isMember      bool
+			memberTier    sql.NullString
+			memberExpiry  sql.NullTime
 			followCount   int64
 			followerCount int64
 			likeCount     int64
+			levelScore    int64
+			onlineSeconds int64
+			activeSeconds int64
+			commentCount  int64
+			likeActions   int64
+			bonusScore    int64
 		)
 		err := s.db.QueryRow(ctx, `
 			SELECT
@@ -166,9 +193,17 @@ func (s *Server) buildSelfUser(ctx context.Context, userID int64) (map[string]an
 				u.is_official,
 				u.is_authentication,
 				u.is_member,
+				COALESCE(u.membership_tier, ''),
+				u.membership_expires_at,
 				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
 				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
-				COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0)
+				COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0),
+				COALESCE(u.level_score, 0),
+				COALESCE(u.online_seconds, 0),
+				COALESCE(u.active_seconds, 0),
+				COALESCE(u.comment_growth_count, 0),
+				COALESCE(u.like_growth_count, 0),
+				COALESCE(u.membership_bonus_score, 0)
 			FROM users u
 			WHERE u.id = $1
 		`, userID).Scan(
@@ -180,45 +215,71 @@ func (s *Server) buildSelfUser(ctx context.Context, userID int64) (map[string]an
 			&isOfficial,
 			&isAuth,
 			&isMember,
+			&memberTier,
+			&memberExpiry,
 			&followCount,
 			&followerCount,
 			&likeCount,
+			&levelScore,
+			&onlineSeconds,
+			&activeSeconds,
+			&commentCount,
+			&likeActions,
+			&bonusScore,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		return map[string]any{
-			"id":                   id,
-			"user_name":            name,
-			"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
-			"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
-			"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
-			"is_official":          boolToInt(isOfficial),
-			"is_authentication":    boolToInt(isAuth),
-			"is_member":            boolToInt(isMember),
-			"follow_count":         followCount,
-			"follow_user_count":    followerCount,
-			"like_count":           likeCount,
-		}, nil
+		now := time.Now()
+		growth := s.growthRulesOrDefault(ctx)
+		membership := buildMembershipPayload(resolveMembershipState(isMember, memberTier.String, memberExpiry, now), now)
+		level := buildLevelPayload(growth, levelScore)
+		payload := map[string]any{
+			"id":                     id,
+			"user_name":              name,
+			"user_avatar":            pickString(avatar, s.assetURL("avatar-default.svg")),
+			"user_background_maps":   pickString(background, s.assetURL("illustrations/world-rafiki.png")),
+			"user_introduce":         pickString(introduce, "这个人很酷，还没有留下简介。"),
+			"is_official":            boolToInt(isOfficial),
+			"is_authentication":      boolToInt(isAuth),
+			"follow_count":           followCount,
+			"follow_user_count":      followerCount,
+			"like_count":             likeCount,
+			"online_seconds":         onlineSeconds,
+			"active_seconds":         activeSeconds,
+			"comment_growth_count":   commentCount,
+			"like_growth_count":      likeActions,
+			"membership_bonus_score": bonusScore,
+		}
+		for key, value := range membership {
+			payload[key] = value
+		}
+		for key, value := range level {
+			payload[key] = value
+		}
+		return payload, nil
 	})
 }
 
 func (s *Server) buildPublicUser(ctx context.Context, viewerID, userID int64) (map[string]any, error) {
 	return cachedJSON(s, ctx, publicUserCacheKey(viewerID, userID), s.cfg.UserCacheTTL, func(ctx context.Context) (map[string]any, error) {
 		var (
-			id          int64
-			name        string
-			avatar      sql.NullString
-			background  sql.NullString
-			introduce   sql.NullString
-			isOfficial  bool
-			isAuth      bool
-			isMember    bool
-			followTotal int64
-			fansTotal   int64
-			likeTotal   int64
-			isFollow    bool
+			id           int64
+			name         string
+			avatar       sql.NullString
+			background   sql.NullString
+			introduce    sql.NullString
+			isOfficial   bool
+			isAuth       bool
+			isMember     bool
+			memberTier   sql.NullString
+			memberExpiry sql.NullTime
+			followTotal  int64
+			fansTotal    int64
+			likeTotal    int64
+			isFollow     bool
+			levelScore   int64
 		)
 		err := s.db.QueryRow(ctx, `
 			SELECT
@@ -230,10 +291,13 @@ func (s *Server) buildPublicUser(ctx context.Context, viewerID, userID int64) (m
 				u.is_official,
 				u.is_authentication,
 				u.is_member,
+				COALESCE(u.membership_tier, ''),
+				u.membership_expires_at,
 				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.user_id = u.id), 0),
 				COALESCE((SELECT COUNT(*) FROM user_follows uf WHERE uf.target_user_id = u.id), 0),
 				COALESCE((SELECT SUM(p.like_count_cache) FROM posts p WHERE p.user_id = u.id AND p.is_deleted = FALSE), 0),
-				EXISTS(SELECT 1 FROM user_follows uf WHERE uf.user_id = $2 AND uf.target_user_id = u.id)
+				EXISTS(SELECT 1 FROM user_follows uf WHERE uf.user_id = $2 AND uf.target_user_id = u.id),
+				COALESCE(u.level_score, 0)
 			FROM users u
 			WHERE u.id = $1
 		`, userID, viewerID).Scan(
@@ -245,29 +309,42 @@ func (s *Server) buildPublicUser(ctx context.Context, viewerID, userID int64) (m
 			&isOfficial,
 			&isAuth,
 			&isMember,
+			&memberTier,
+			&memberExpiry,
 			&followTotal,
 			&fansTotal,
 			&likeTotal,
 			&isFollow,
+			&levelScore,
 		)
 		if err != nil {
 			return nil, err
 		}
 
-		return map[string]any{
+		now := time.Now()
+		growth := s.growthRulesOrDefault(ctx)
+		membership := buildMembershipPayload(resolveMembershipState(isMember, memberTier.String, memberExpiry, now), now)
+		level := buildLevelPayload(growth, levelScore)
+		payload := map[string]any{
 			"id":                   id,
 			"user_name":            name,
 			"user_avatar":          pickString(avatar, s.assetURL("avatar-default.svg")),
-			"user_background_maps": pickString(background, s.assetURL("profile-cover.svg")),
+			"user_background_maps": pickString(background, s.assetURL("illustrations/world-rafiki.png")),
 			"user_introduce":       pickString(introduce, "这个人很酷，还没有留下简介。"),
 			"is_official":          boolToInt(isOfficial),
 			"is_authentication":    boolToInt(isAuth),
-			"is_member":            boolToInt(isMember),
 			"followTotal":          followTotal,
 			"fansTotal":            fansTotal,
 			"likeTotal":            likeTotal,
 			"isFollow":             boolToInt(isFollow),
-		}, nil
+		}
+		for key, value := range membership {
+			payload[key] = value
+		}
+		for key, value := range level {
+			payload[key] = value
+		}
+		return payload, nil
 	})
 }
 
@@ -305,22 +382,71 @@ func (s *Server) fetchPostIDs(ctx context.Context, query string, args ...any) ([
 }
 
 func (s *Server) buildPosts(ctx context.Context, viewerID int64, postIDs []int64) ([]map[string]any, error) {
+	if len(postIDs) == 0 {
+		return []map[string]any{}, nil
+	}
+
+	coresByID, err := s.fetchPostCores(ctx, viewerID, postIDs)
+	if err != nil {
+		return nil, err
+	}
+	postOwners := make(map[int64]int64, len(coresByID))
+	for postID, core := range coresByID {
+		postOwners[postID] = core.UserID
+	}
+
+	imagesByPost, err := s.fetchPostImagesByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, err
+	}
+	tagsByPost, err := s.fetchPostTagsByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, err
+	}
+	rewardsByPost, err := s.fetchPostRewardsPreviewByPostIDs(ctx, postIDs)
+	if err != nil {
+		return nil, err
+	}
+	commentsByPost, err := s.fetchPostCommentsPreviewByPostIDs(ctx, postIDs, postOwners)
+	if err != nil {
+		return nil, err
+	}
+
 	posts := make([]map[string]any, 0, len(postIDs))
 	for _, postID := range postIDs {
-		post, err := s.buildPost(ctx, viewerID, postID)
-		if err != nil {
-			return nil, err
+		core, ok := coresByID[postID]
+		if !ok {
+			continue
 		}
-		if post != nil {
-			posts = append(posts, post)
-		}
+		posts = append(posts, s.composePostPayload(
+			ctx,
+			core,
+			imagesByPost[postID],
+			tagsByPost[postID],
+			rewardsByPost[postID],
+			commentsByPost[postID],
+		))
 	}
 	return posts, nil
 }
 
 func (s *Server) buildPost(ctx context.Context, viewerID, postID int64) (map[string]any, error) {
-	var record postCore
-	err := s.db.QueryRow(ctx, `
+	if postID <= 0 {
+		return nil, nil
+	}
+
+	posts, err := s.buildPosts(ctx, viewerID, []int64{postID})
+	if err != nil {
+		return nil, err
+	}
+	if len(posts) == 0 {
+		return nil, nil
+	}
+	return posts[0], nil
+}
+
+func (s *Server) fetchPostCores(ctx context.Context, viewerID int64, postIDs []int64) (map[int64]postCore, error) {
+	rows, err := s.db.Query(ctx, `
 		SELECT
 			p.id,
 			p.user_id,
@@ -340,72 +466,93 @@ func (s *Server) buildPost(ctx context.Context, viewerID, postID int64) (map[str
 			u.is_official,
 			u.is_authentication,
 			u.is_member,
+			COALESCE(u.membership_tier, ''),
+			u.membership_expires_at,
+			COALESCE(u.level_no, 1),
+			COALESCE(u.level_score, 0),
 			c.circle_name,
 			p.like_count_cache,
 			p.comment_count_cache,
 			p.reward_count_cache,
-			EXISTS(SELECT 1 FROM post_likes pl WHERE pl.post_id = p.id AND pl.user_id = $2),
-			EXISTS(SELECT 1 FROM post_collects pc WHERE pc.post_id = p.id AND pc.user_id = $2),
-			EXISTS(SELECT 1 FROM user_follows uf WHERE uf.user_id = $2 AND uf.target_user_id = p.user_id),
+			(pl.user_id IS NOT NULL),
+			(pc.user_id IS NOT NULL),
+			(uf.user_id IS NOT NULL),
 			(p.user_id = $2)
 		FROM posts p
 		JOIN users u ON u.id = p.user_id
 		LEFT JOIN circles c ON c.id = p.circle_id
-		WHERE p.id = $1
-	`, postID, viewerID).Scan(
-		&record.ID,
-		&record.UserID,
-		&record.CircleID,
-		&record.PostsContent,
-		&record.AddressJSON,
-		&record.VideoURL,
-		&record.VideoThumbURL,
-		&record.VideoHeight,
-		&record.VideoWidth,
-		&record.AuditStatus,
-		&record.IsDeleted,
-		&record.CreatedAt,
-		&record.UserName,
-		&record.UserAvatar,
-		&record.UserIntroduce,
-		&record.UserOfficial,
-		&record.UserAuth,
-		&record.UserMember,
-		&record.CircleName,
-		&record.LikeCount,
-		&record.CommentCount,
-		&record.ExceptionalCount,
-		&record.IsLike,
-		&record.IsCollect,
-		&record.IsFollowUser,
-		&record.IsMyPosts,
-	)
+		LEFT JOIN post_likes pl ON pl.post_id = p.id AND pl.user_id = $2
+		LEFT JOIN post_collects pc ON pc.post_id = p.id AND pc.user_id = $2
+		LEFT JOIN user_follows uf ON uf.user_id = $2 AND uf.target_user_id = p.user_id
+		WHERE p.id = ANY($1)
+	`, postIDs, viewerID)
 	if err != nil {
-		if errorsIsNoRows(err) {
-			return nil, nil
-		}
 		return nil, err
+	}
+	defer rows.Close()
+
+	records := make(map[int64]postCore, len(postIDs))
+	for rows.Next() {
+		var record postCore
+		if err := rows.Scan(
+			&record.ID,
+			&record.UserID,
+			&record.CircleID,
+			&record.PostsContent,
+			&record.AddressJSON,
+			&record.VideoURL,
+			&record.VideoThumbURL,
+			&record.VideoHeight,
+			&record.VideoWidth,
+			&record.AuditStatus,
+			&record.IsDeleted,
+			&record.CreatedAt,
+			&record.UserName,
+			&record.UserAvatar,
+			&record.UserIntroduce,
+			&record.UserOfficial,
+			&record.UserAuth,
+			&record.UserMember,
+			&record.UserMemberTier,
+			&record.UserMemberExpiry,
+			&record.UserLevelNo,
+			&record.UserLevelScore,
+			&record.CircleName,
+			&record.LikeCount,
+			&record.CommentCount,
+			&record.ExceptionalCount,
+			&record.IsLike,
+			&record.IsCollect,
+			&record.IsFollowUser,
+			&record.IsMyPosts,
+		); err != nil {
+			return nil, err
+		}
+		records[record.ID] = record
+	}
+	return records, rows.Err()
+}
+
+func (s *Server) composePostPayload(ctx context.Context, record postCore, images, tags, rewards, comments []map[string]any) map[string]any {
+	if images == nil {
+		images = []map[string]any{}
+	}
+	if tags == nil {
+		tags = []map[string]any{}
+	}
+	if rewards == nil {
+		rewards = []map[string]any{}
+	}
+	if comments == nil {
+		comments = []map[string]any{}
 	}
 
-	images, err := s.fetchPostImages(ctx, record.ID)
-	if err != nil {
-		return nil, err
-	}
-	tags, err := s.fetchPostTags(ctx, record.ID)
-	if err != nil {
-		return nil, err
-	}
-	rewards, err := s.fetchPostRewardsPreview(ctx, record.ID)
-	if err != nil {
-		return nil, err
-	}
-	comments, err := s.fetchPostCommentsPreview(ctx, record.ID)
-	if err != nil {
-		return nil, err
-	}
 	address := map[string]any(nil)
 	if len(record.AddressJSON) > 0 {
 		_ = json.Unmarshal(record.AddressJSON, &address)
+		if len(address) == 0 {
+			address = nil
+		}
 	}
 
 	var video any
@@ -416,7 +563,7 @@ func (s *Server) buildPost(ctx context.Context, viewerID, postID int64) (map[str
 		}
 		video = map[string]any{
 			"video_url":       record.VideoURL.String,
-			"video_thumb_url": pickString(record.VideoThumbURL, s.assetURL("video-cover.svg")),
+			"video_thumb_url": pickString(record.VideoThumbURL, s.assetURL("illustrations/social-media-rafiki.png")),
 			"show_type":       showType,
 		}
 	}
@@ -424,7 +571,7 @@ func (s *Server) buildPost(ctx context.Context, viewerID, postID int64) (map[str
 	post := map[string]any{
 		"id":                record.ID,
 		"posts_content":     record.PostsContent,
-		"user":              s.compactUser(record.UserID, record.UserName, record.UserAvatar, record.UserOfficial, record.UserAuth, record.UserMember),
+		"user":              s.compactUser(ctx, record.UserID, record.UserName, record.UserAvatar, record.UserOfficial, record.UserAuth, record.UserMember, record.UserMemberTier.String, record.UserMemberExpiry, record.UserLevelNo, record.UserLevelScore),
 		"circle":            map[string]any{"id": record.CircleID, "circle_name": pickString(record.CircleName, "默认圈子")},
 		"images":            images,
 		"video":             video,
@@ -446,148 +593,184 @@ func (s *Server) buildPost(ctx context.Context, viewerID, postID int64) (map[str
 	if len(images) > 0 {
 		post["imagea"] = images[0]
 	} else {
-		post["imagea"] = map[string]any{"img_url": s.assetURL("post-cover.svg")}
+		post["imagea"] = map[string]any{"img_url": s.assetURL("illustrations/social-media-rafiki.png")}
 	}
-	return post, nil
+	return post
 }
 
-func (s *Server) compactUser(id int64, name string, avatar sql.NullString, isOfficial, isAuth, isMember bool) map[string]any {
-	return map[string]any{
+func (s *Server) compactUser(ctx context.Context, id int64, name string, avatar sql.NullString, isOfficial, isAuth, isMember bool, membershipTier string, membershipExpiry sql.NullTime, levelNo int64, levelScore int64) map[string]any {
+	now := time.Now()
+	membership := buildMembershipPayload(resolveMembershipState(isMember, membershipTier, membershipExpiry, now), now)
+	growth := s.growthRulesOrDefault(ctx)
+	level := buildLevelPayload(growth, levelScore)
+	payload := map[string]any{
 		"id":                id,
 		"user_name":         name,
 		"user_avatar":       pickString(avatar, s.assetURL("avatar-default.svg")),
 		"is_official":       boolToInt(isOfficial),
 		"is_authentication": boolToInt(isAuth),
-		"is_member":         boolToInt(isMember),
 	}
+	for key, value := range membership {
+		payload[key] = value
+	}
+	if levelNo < 1 {
+		levelNo = 1
+	}
+	payload["level_no"] = level["level_no"]
+	payload["level_label"] = level["level_label"]
+	return payload
 }
 
-func (s *Server) fetchPostImages(ctx context.Context, postID int64) ([]map[string]any, error) {
-	rows, err := s.db.Query(ctx, `SELECT img_url FROM post_images WHERE post_id = $1 ORDER BY sort_index ASC, id ASC`, postID)
+func (s *Server) fetchPostImagesByPostIDs(ctx context.Context, postIDs []int64) (map[int64][]map[string]any, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT post_id, img_url
+		FROM post_images
+		WHERE post_id = ANY($1)
+		ORDER BY post_id ASC, sort_index ASC, id ASC
+	`, postIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	images := make([]map[string]any, 0, 4)
+	imagesByPost := make(map[int64][]map[string]any, len(postIDs))
 	for rows.Next() {
+		var postID int64
 		var url sql.NullString
-		if err := rows.Scan(&url); err != nil {
+		if err := rows.Scan(&postID, &url); err != nil {
 			return nil, err
 		}
-		images = append(images, map[string]any{
-			"img_url": pickString(url, s.assetURL("post-cover.svg")),
+		imagesByPost[postID] = append(imagesByPost[postID], map[string]any{
+			"img_url": pickString(url, s.assetURL("illustrations/social-media-rafiki.png")),
 		})
 	}
-	return images, rows.Err()
+	return imagesByPost, rows.Err()
 }
 
-func (s *Server) fetchPostTags(ctx context.Context, postID int64) ([]map[string]any, error) {
+func (s *Server) fetchPostTagsByPostIDs(ctx context.Context, postIDs []int64) (map[int64][]map[string]any, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT t.id, t.tags_name
+		SELECT pt.post_id, t.id, t.tags_name
 		FROM post_tags pt
 		JOIN tags t ON t.id = pt.tag_id
-		WHERE pt.post_id = $1
-		ORDER BY t.hot_score DESC, t.id ASC
-	`, postID)
+		WHERE pt.post_id = ANY($1)
+		ORDER BY pt.post_id ASC, t.hot_score DESC, t.id ASC
+	`, postIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var tags []map[string]any
+	tagsByPost := make(map[int64][]map[string]any, len(postIDs))
 	for rows.Next() {
 		var (
-			id   int64
-			name string
+			postID int64
+			id     int64
+			name   string
 		)
-		if err := rows.Scan(&id, &name); err != nil {
+		if err := rows.Scan(&postID, &id, &name); err != nil {
 			return nil, err
 		}
-		tags = append(tags, map[string]any{
+		tagsByPost[postID] = append(tagsByPost[postID], map[string]any{
 			"id":        id,
 			"tags_name": name,
 		})
 	}
-	return tags, rows.Err()
+	return tagsByPost, rows.Err()
 }
 
-func (s *Server) fetchPostRewardsPreview(ctx context.Context, postID int64) ([]map[string]any, error) {
+func (s *Server) fetchPostRewardsPreviewByPostIDs(ctx context.Context, postIDs []int64) (map[int64][]map[string]any, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT u.user_avatar
-		FROM post_rewards pr
-		JOIN users u ON u.id = pr.from_user_id
-		WHERE pr.post_id = $1
-		ORDER BY pr.created_at DESC
-		LIMIT 6
-	`, postID)
+		SELECT post_id, user_avatar
+		FROM (
+			SELECT
+				pr.post_id,
+				u.user_avatar,
+				ROW_NUMBER() OVER (PARTITION BY pr.post_id ORDER BY pr.created_at DESC) AS rn
+			FROM post_rewards pr
+			JOIN users u ON u.id = pr.from_user_id
+			WHERE pr.post_id = ANY($1)
+		) ranked
+		WHERE rn <= 6
+		ORDER BY post_id ASC, rn ASC
+	`, postIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var rewards []map[string]any
+	rewardsByPost := make(map[int64][]map[string]any, len(postIDs))
 	for rows.Next() {
+		var postID int64
 		var avatar sql.NullString
-		if err := rows.Scan(&avatar); err != nil {
+		if err := rows.Scan(&postID, &avatar); err != nil {
 			return nil, err
 		}
-		rewards = append(rewards, map[string]any{
+		rewardsByPost[postID] = append(rewardsByPost[postID], map[string]any{
 			"user_avatar": pickString(avatar, s.assetURL("avatar-default.svg")),
 		})
 	}
-	return rewards, rows.Err()
+	return rewardsByPost, rows.Err()
 }
 
-func (s *Server) fetchPostCommentsPreview(ctx context.Context, postID int64) ([]map[string]any, error) {
+func (s *Server) fetchPostCommentsPreviewByPostIDs(ctx context.Context, postIDs []int64, postOwners map[int64]int64) (map[int64][]map[string]any, error) {
 	rows, err := s.db.Query(ctx, `
 		SELECT
-			c.id,
-			c.user_id,
-			c.reply_user_id,
-			c.comment_content,
-			c.comment_img_url,
-			u.user_name,
-			p.user_id
-		FROM comments c
-		JOIN users u ON u.id = c.user_id
-		JOIN posts p ON p.id = c.post_id
-		WHERE c.post_id = $1
-			AND c.comment_id IS NULL
-			AND c.is_deleted = FALSE
-			AND c.audit_status = 1
-		ORDER BY c.created_at DESC
-		LIMIT 2
-	`, postID)
+			post_id,
+			id,
+			user_id,
+			reply_user_id,
+			comment_content,
+			comment_img_url,
+			user_name
+		FROM (
+			SELECT
+				c.post_id,
+				c.id,
+				c.user_id,
+				c.reply_user_id,
+				c.comment_content,
+				c.comment_img_url,
+				u.user_name,
+				ROW_NUMBER() OVER (PARTITION BY c.post_id ORDER BY c.created_at DESC) AS rn
+			FROM comments c
+			JOIN users u ON u.id = c.user_id
+			WHERE c.post_id = ANY($1)
+				AND c.comment_id IS NULL
+				AND c.is_deleted = FALSE
+				AND c.audit_status = 1
+		) ranked
+		WHERE rn <= 2
+		ORDER BY post_id ASC, rn ASC
+	`, postIDs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var comments []map[string]any
+	commentsByPost := make(map[int64][]map[string]any, len(postIDs))
 	for rows.Next() {
 		var (
+			postID      int64
 			id          int64
 			userID      int64
 			replyUserID sql.NullInt64
 			content     sql.NullString
 			img         sql.NullString
 			userName    string
-			postUserID  int64
 		)
-		if err := rows.Scan(&id, &userID, &replyUserID, &content, &img, &userName, &postUserID); err != nil {
+		if err := rows.Scan(&postID, &id, &userID, &replyUserID, &content, &img, &userName); err != nil {
 			return nil, err
 		}
-		comments = append(comments, map[string]any{
+		commentsByPost[postID] = append(commentsByPost[postID], map[string]any{
 			"id":              id,
 			"user_id":         userID,
-			"posts_user_id":   postUserID,
+			"posts_user_id":   postOwners[postID],
 			"user_name":       userName,
 			"comment_content": nullableString(content),
 			"comment_img_url": nullableString(img),
 		})
 	}
-	return comments, rows.Err()
+	return commentsByPost, rows.Err()
 }
 
 func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, page int) ([]map[string]any, int64, error) {
@@ -603,17 +786,19 @@ func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, p
 			u.user_name,
 			u.user_avatar,
 			p.user_id,
+			(cl.user_id IS NOT NULL),
 			COUNT(*) OVER()
 		FROM comments c
 		JOIN users u ON u.id = c.user_id
 		JOIN posts p ON p.id = c.post_id
+		LEFT JOIN comment_likes cl ON cl.comment_id = c.id AND cl.user_id = $2
 		WHERE c.post_id = $1
 			AND c.comment_id IS NULL
 			AND c.is_deleted = FALSE
 			AND c.audit_status = 1
 		ORDER BY c.created_at DESC
-		LIMIT $2 OFFSET $3
-	`, postID, defaultPageSize, offsetValue)
+		LIMIT $3 OFFSET $4
+	`, postID, viewerID, defaultPageSize, offsetValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -629,6 +814,7 @@ func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, p
 		UserName   string
 		UserAvatar sql.NullString
 		PostsUser  int64
+		IsLike     bool
 		Total      int64
 	}
 
@@ -648,6 +834,7 @@ func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, p
 			&item.UserName,
 			&item.UserAvatar,
 			&item.PostsUser,
+			&item.IsLike,
 			&item.Total,
 		); err != nil {
 			return nil, 0, err
@@ -661,7 +848,6 @@ func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, p
 
 	result := make([]map[string]any, 0, len(commentRows))
 	for _, item := range commentRows {
-		isLike, _ := s.exists(ctx, `SELECT 1 FROM comment_likes WHERE comment_id = $1 AND user_id = $2`, item.ID, viewerID)
 		children, err := s.fetchCommentChildren(ctx, viewerID, item.ID)
 		if err != nil {
 			return nil, 0, err
@@ -675,7 +861,7 @@ func (s *Server) fetchCommentTree(ctx context.Context, viewerID, postID int64, p
 			"comment_img_url": nullableString(item.Image),
 			"format_time":     formatRelativeTime(item.CreatedAt),
 			"like_count":      item.LikeCount,
-			"is_like":         isLike,
+			"is_like":         item.IsLike,
 			"posts_user_id":   item.PostsUser,
 			"uid":             viewerID,
 			"child":           children,
@@ -702,15 +888,17 @@ func (s *Server) fetchCommentChildren(ctx context.Context, viewerID, parentID in
 			c.like_count_cache,
 			u.user_name,
 			u.user_avatar,
-			ru.user_name
+			ru.user_name,
+			(cl.user_id IS NOT NULL)
 		FROM comments c
 		JOIN users u ON u.id = c.user_id
 		LEFT JOIN users ru ON ru.id = c.reply_user_id
+		LEFT JOIN comment_likes cl ON cl.comment_id = c.id AND cl.user_id = $2
 		WHERE c.comment_id = $1
 			AND c.is_deleted = FALSE
 			AND c.audit_status = 1
 		ORDER BY c.created_at ASC
-	`, parentID)
+	`, parentID, viewerID)
 	if err != nil {
 		return nil, err
 	}
@@ -729,6 +917,7 @@ func (s *Server) fetchCommentChildren(ctx context.Context, viewerID, parentID in
 			userName    string
 			userAvatar  sql.NullString
 			replyUser   sql.NullString
+			isLike      bool
 		)
 		if err := rows.Scan(
 			&id,
@@ -741,10 +930,10 @@ func (s *Server) fetchCommentChildren(ctx context.Context, viewerID, parentID in
 			&userName,
 			&userAvatar,
 			&replyUser,
+			&isLike,
 		); err != nil {
 			return nil, err
 		}
-		isLike, _ := s.exists(ctx, `SELECT 1 FROM comment_likes WHERE comment_id = $1 AND user_id = $2`, id, viewerID)
 		children = append(children, map[string]any{
 			"id":                 id,
 			"user_id":            userID,
@@ -765,19 +954,39 @@ func (s *Server) fetchCommentChildren(ctx context.Context, viewerID, parentID in
 }
 
 func (s *Server) fetchCircleSummary(ctx context.Context, viewerID int64, circleID int64) (map[string]any, error) {
-	var (
-		id          int64
-		userID      int64
-		plateID     int64
-		name        string
-		introduce   sql.NullString
-		head        sql.NullString
-		background  sql.NullString
-		postCount   int64
-		followCount int64
-		isFollow    bool
-	)
-	err := s.db.QueryRow(ctx, `
+	circles, err := s.buildCircles(ctx, viewerID, []int64{circleID})
+	if err != nil {
+		return nil, err
+	}
+	if len(circles) == 0 {
+		return nil, pgx.ErrNoRows
+	}
+	return circles[0], nil
+}
+
+func (s *Server) buildCircles(ctx context.Context, viewerID int64, circleIDs []int64) ([]map[string]any, error) {
+	if len(circleIDs) == 0 {
+		return []map[string]any{}, nil
+	}
+
+	coresByID, err := s.fetchCircleCores(ctx, viewerID, circleIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	circles := make([]map[string]any, 0, len(circleIDs))
+	for _, circleID := range circleIDs {
+		core, ok := coresByID[circleID]
+		if !ok {
+			continue
+		}
+		circles = append(circles, s.composeCirclePayload(core))
+	}
+	return circles, nil
+}
+
+func (s *Server) fetchCircleCores(ctx context.Context, viewerID int64, circleIDs []int64) (map[int64]circleCore, error) {
+	rows, err := s.db.Query(ctx, `
 		SELECT
 			c.id,
 			c.user_id,
@@ -786,41 +995,67 @@ func (s *Server) fetchCircleSummary(ctx context.Context, viewerID int64, circleI
 			c.circle_introduce,
 			c.head_portrait,
 			c.background_maps,
-			COALESCE((SELECT COUNT(*) FROM posts p WHERE p.circle_id = c.id AND p.is_deleted = FALSE AND p.audit_status = 1), 0),
-			COALESCE((SELECT COUNT(*) FROM circle_follows cf WHERE cf.circle_id = c.id), 0),
-			EXISTS(SELECT 1 FROM circle_follows cf WHERE cf.circle_id = c.id AND cf.user_id = $2)
+			COALESCE(post_stats.post_count, 0),
+			COALESCE(follow_stats.follow_count, 0),
+			(viewer_follow.user_id IS NOT NULL)
 		FROM circles c
-		WHERE c.id = $1
-	`, circleID, viewerID).Scan(
-		&id,
-		&userID,
-		&plateID,
-		&name,
-		&introduce,
-		&head,
-		&background,
-		&postCount,
-		&followCount,
-		&isFollow,
-	)
+		LEFT JOIN (
+			SELECT circle_id, COUNT(*) AS post_count
+			FROM posts
+			WHERE circle_id = ANY($1) AND is_deleted = FALSE AND audit_status = 1
+			GROUP BY circle_id
+		) post_stats ON post_stats.circle_id = c.id
+		LEFT JOIN (
+			SELECT circle_id, COUNT(*) AS follow_count
+			FROM circle_follows
+			WHERE circle_id = ANY($1)
+			GROUP BY circle_id
+		) follow_stats ON follow_stats.circle_id = c.id
+		LEFT JOIN circle_follows viewer_follow ON viewer_follow.circle_id = c.id AND viewer_follow.user_id = $2
+		WHERE c.id = ANY($1)
+	`, circleIDs, viewerID)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
+	cores := make(map[int64]circleCore, len(circleIDs))
+	for rows.Next() {
+		var core circleCore
+		if err := rows.Scan(
+			&core.ID,
+			&core.UserID,
+			&core.PlateID,
+			&core.Name,
+			&core.Introduce,
+			&core.Head,
+			&core.Background,
+			&core.PostCount,
+			&core.FollowCount,
+			&core.IsFollow,
+		); err != nil {
+			return nil, err
+		}
+		cores[core.ID] = core
+	}
+	return cores, rows.Err()
+}
+
+func (s *Server) composeCirclePayload(core circleCore) map[string]any {
 	return map[string]any{
-		"id":                  id,
-		"user_id":             userID,
-		"plate_id":            plateID,
-		"circle_name":         name,
-		"circle_introduce":    pickString(introduce, "这个圈子还没有简介。"),
-		"head_portrait":       pickString(head, s.assetURL("circle-avatar.svg")),
-		"background_maps":     pickString(background, s.assetURL("circle-cover.svg")),
-		"circle_posts_count":  postCount,
-		"circle_follow_count": followCount,
-		"posts_count":         postCount,
-		"user_circle_count":   followCount,
-		"is_follow_circle":    isFollow,
-	}, nil
+		"id":                  core.ID,
+		"user_id":             core.UserID,
+		"plate_id":            core.PlateID,
+		"circle_name":         core.Name,
+		"circle_introduce":    pickString(core.Introduce, "这个圈子还没有简介。"),
+		"head_portrait":       pickString(core.Head, s.assetURL("illustrations/circles-rafiki.png")),
+		"background_maps":     pickString(core.Background, s.assetURL("illustrations/circles-rafiki.png")),
+		"circle_posts_count":  core.PostCount,
+		"circle_follow_count": core.FollowCount,
+		"posts_count":         core.PostCount,
+		"user_circle_count":   core.FollowCount,
+		"is_follow_circle":    core.IsFollow,
+	}
 }
 
 func (s *Server) fetchCircleUsers(ctx context.Context, circleID int64) ([]map[string]any, error) {

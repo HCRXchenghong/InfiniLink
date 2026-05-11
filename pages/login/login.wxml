@@ -8,6 +8,11 @@
     <view class="logosub">{{configData.app_intro}}</view>
   </view>
   <view class="login_bg">
+    <view class="ban-card" wx:if="{{banInfo}}">
+      <view class="ban-title">您已被封禁</view>
+      <view class="ban-line" wx:if="{{banInfo.banned_at}}">封禁时间：{{banInfo.banned_at}}</view>
+      <view class="ban-line">封禁原因：{{banInfo.reason}}</view>
+    </view>
     <button class="mb20" loading="{{btnState}}" bindtap="getUserInfo" formType="submit">
       <image src="/image/weixin.png"></image>微信登录
     </button>

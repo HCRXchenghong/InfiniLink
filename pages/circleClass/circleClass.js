@@ -1,6 +1,7 @@
 const mixins = require('../../mixins/circle')
 const common = require('../../mixins/common')
 var util = require('../../utils/util.js');
+const membership = require('../../utils/membership')
 const app = getApp()
 
 const options = {
@@ -24,6 +25,13 @@ const options = {
     banner: [],
     swiperload: true,
     vipPopup: false,
+    circleMembershipPrompt: null,
+  },
+
+  syncCircleMembershipPrompt(userInfo) {
+    this.setData({
+      circleMembershipPrompt: membership.buildCirclePrompt(userInfo)
+    })
   },
 
   vipPopupTap() {
@@ -69,6 +77,7 @@ const options = {
     let that = this;
     that.setData({
       focusShow: Number(options.focusShow),
+      circleMembershipPrompt: membership.buildCirclePrompt(wx.getStorageSync('userInfo')),
     })
     that.plateList();
     that.circleByplateid(-1);
@@ -90,15 +99,19 @@ const options = {
     let that = this;
     let res = util.loginNow();
     if (res == true) {
-      let userInfo = wx.getStorageSync('userInfo')
+      let userInfo = wx.getStorageSync('userInfo') || {}
+      let prompt = membership.buildCirclePrompt(userInfo)
+      that.setData({
+        circleMembershipPrompt: prompt
+      })
       if (userInfo.is_member == 1) {
         wx.navigateTo({
           url: '/pages/circle/creat?type=0',
         })
       } else {
         wx.showModal({
-          title: '建圈提示',
-          content: '建圈功能属于会员特权，您可以选择以下两种方式成为轻航会员',
+          title: prompt.gateTitle,
+          content: prompt.gateContent,
           cancelText: "付费开通",
           cancelColor: "#333333",
           confirmText: "活动领取",
@@ -140,13 +153,21 @@ const options = {
    */
   onShow: function () {
     let that = this;
-    let d = new Date(),
-      str = '';
-    str += d.getFullYear() + '-';
-    str += d.getMonth() + 2 + '-';
-    str += d.getDate();
     that.setData({
-      tomorrowTime: str
+      tomorrowTime: Date.now() + 24 * 60 * 60 * 1000,
+      circleMembershipPrompt: membership.buildCirclePrompt(wx.getStorageSync('userInfo'))
+    })
+  },
+
+  onCircleMembershipPromptTap(e) {
+    const action = e.currentTarget.dataset.action;
+    const scene = e.currentTarget.dataset.scene;
+    const route = membership.resolveMembershipActionRoute(action, scene);
+    if (!route) {
+      return;
+    }
+    wx.navigateTo({
+      url: route,
     })
   },
 
@@ -157,9 +178,9 @@ const options = {
         that.freeGetVip();
       }, 2500)
       return {
-        title: '邀你一起免费领取轻航大会员啦！',
+        title: '邀你一起免费领取InfiniLink 会员啦！',
         path: '/pages/tabbar/index/index',
-        imageUrl: 'http://127.0.0.1/storage/wxprogram/image/qinghang-fxhb.jpg',
+        imageUrl: '/backend/static/illustrations/plain-credit-card-cuate.png',
       }
     } else {
       return {

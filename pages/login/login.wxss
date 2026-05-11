@@ -61,6 +61,29 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+.ban-card {
+  width: 560rpx;
+  margin-bottom: 36rpx;
+  padding: 28rpx 32rpx;
+  border-radius: 24rpx;
+  background: rgba(0, 0, 0, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  box-sizing: border-box;
+}
+
+.ban-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.ban-line {
+  font-size: 24rpx;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .login_bg button {
   width: 500rpx;
   height: 100rpx;

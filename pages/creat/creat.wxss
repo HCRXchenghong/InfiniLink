@@ -7,6 +7,122 @@
   padding-bottom: 200rpx;
 }
 
+.membership-post-entry {
+  width: 690rpx;
+  margin-top: 100rpx;
+  padding: 24rpx;
+  box-sizing: border-box;
+  border-radius: 20rpx;
+  background: #f8f8f8;
+}
+
+.membership-post-entry-pro {
+  background: #f7f4ea;
+}
+
+.membership-post-entry-max {
+  background: #141414;
+}
+
+.membership-entry-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.membership-entry-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120rpx;
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.78);
+  color: #333333;
+  font-size: 20rpx;
+  font-weight: 700;
+}
+
+.membership-post-entry-max .membership-entry-badge {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.membership-entry-title {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  line-height: 42rpx;
+  color: #333333;
+  font-weight: 700;
+}
+
+.membership-entry-desc {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  line-height: 36rpx;
+  color: #666666;
+}
+
+.membership-entry-items {
+  margin-top: 18rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.membership-entry-item + .membership-entry-item {
+  margin-top: 12rpx;
+}
+
+.membership-entry-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 18rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.membership-entry-item-label,
+.membership-entry-item-value {
+  font-size: 24rpx;
+  line-height: 32rpx;
+  color: #333333;
+}
+
+.membership-entry-item-value {
+  font-weight: 600;
+}
+
+.membership-entry-action {
+  margin-top: 20rpx;
+  width: 220rpx;
+  height: 68rpx;
+  border-radius: 999rpx;
+  background: #333333;
+  color: #ffffff;
+  font-size: 24rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.membership-post-entry-max .membership-entry-title,
+.membership-post-entry-max .membership-entry-desc,
+.membership-post-entry-max .membership-entry-item-label,
+.membership-post-entry-max .membership-entry-item-value {
+  color: #ffffff;
+}
+
+.membership-post-entry-max .membership-entry-item {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.membership-post-entry-max .membership-entry-action {
+  background: #ffffff;
+  color: #111111;
+}
+
 .top-button-confirm {
   position: fixed;
   z-index: 999;

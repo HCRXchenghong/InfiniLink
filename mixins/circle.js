@@ -2,6 +2,12 @@ const app = getApp();
 const api = require('../config/api');
 const util = require('../utils/util');
 
+function logCircleError(scope, err) {
+  try {
+    console.error('[InfiniLink circle:' + scope + ']', err);
+  } catch (error) {}
+}
+
 /**
  * 获取板块列表建圈用
  */
@@ -12,6 +18,12 @@ const geToptionsList = function () {
     args.cats = res.data;
     args.hotload = false;
     that.setData(args)
+  }).catch(function (err) {
+    logCircleError('geToptionsList', err);
+    that.setData({
+      hotload: false,
+      subcatsloading: false
+    })
   })
 }
 
@@ -68,9 +80,22 @@ const creatCircle = function () {
   }
   util.request(api.addCircleUrl, datas, "POST").then(function (res) {
     wx.hideLoading();
+    if (res.data && res.data.moderated) {
+      wx.showModal({
+        title: '圈子已下架',
+        content: '您发布的信息存在违规，已为您下架处理。' + (res.data.reason ? '\n原因：' + res.data.reason : ''),
+        showCancel: false,
+        confirmText: "我知道了",
+        confirmColor: "#333333",
+        success() {
+          wx.navigateBack();
+        }
+      })
+      return;
+    }
     wx.showModal({
       title: '提交成功',
-      content: '睡醒审帖员会在24小时内为您处理，请您耐心等待！',
+      content: 'InfiniLink 审核团队会在 24 小时内为您处理，请您耐心等待！',
       showCancel: false,
       confirmText: "朕知道了",
       confirmColor: "#333333",
@@ -133,6 +158,12 @@ const circleRecommend = function () {
     args.toplist = res.data;
     args.topload = false;
     that.setData(args)
+  }).catch(function (err) {
+    logCircleError('circleRecommend', err);
+    that.setData({
+      toplist: [],
+      topload: false
+    })
   })
 }
 
@@ -169,6 +200,13 @@ const circleCircleAndPosts = function (page) {
     }
     args.isPullDownRefresh = true;
     that.setData(args);
+  }).catch(function (err) {
+    logCircleError('circleCircleAndPosts', err);
+    that.setData({
+      subcatsloading: false,
+      loadmoreShow: false,
+      isPullDownRefresh: true
+    })
   })
 }
 
@@ -198,6 +236,13 @@ const userFollowCircleList = function (page) {
     }
     args.isPullDownRefresh = true;
     that.setData(args);
+  }).catch(function (err) {
+    logCircleError('userFollowCircleList', err);
+    that.setData({
+      subcatsloading: false,
+      loadmoreShow: false,
+      isPullDownRefresh: true
+    })
   })
 }
 
@@ -228,8 +273,17 @@ const circleInfo = function (id) {
  */
 const quitCircle = function (e) {
   let that = this;
+  const circleId = Number(e.currentTarget.dataset.id || 0);
+  if (!circleId) {
+    wx.showToast({
+      title: '圈子参数不正确',
+      icon: 'none',
+      duration: 1500
+    })
+    return;
+  }
   util.request(api.userFollowCircleUrl, {
-    circle_id: e.currentTarget.dataset.id
+    circle_id: circleId
   }, "POST").then(function (res) {
     if (res.status) {
       let circleInfo = that.data.circleInfo;
@@ -359,7 +413,7 @@ const freeGetVip = function () {
           vipPopup: false
         })
         wx.showToast({
-          title: '领取成功，已为您开通睡醒大会员！',
+          title: '领取成功，已为您开通 InfiniLink 会员！',
           icon: 'none'
         })
       })
@@ -385,6 +439,10 @@ const getCircleUserList = function (cid) {
 
 
 module.exports = function (obj) {
+  obj.data = Object.assign({
+    posterConfig: {},
+    circleInfo: {},
+  }, obj.data || {});
 
   obj.getCircleUserList = getCircleUserList;
   obj.freeGetVip = freeGetVip;

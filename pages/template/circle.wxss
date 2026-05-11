@@ -1,3 +1,5 @@
+@import "/styles/level.wxss";
+
 .topic-detail-view {
   display: flex;
   flex-direction: column;
@@ -717,6 +719,51 @@
   margin: 0 8rpx;
 }
 
+.member-pill {
+  min-width: 60rpx;
+  height: 28rpx;
+  padding: 0 10rpx;
+  margin-left: 8rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 16rpx;
+  line-height: 28rpx;
+  font-weight: 700;
+}
+
+.level-pill {
+  min-width: 60rpx;
+  height: 28rpx;
+  padding: 0 10rpx;
+  margin-left: 8rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 16rpx;
+  line-height: 28rpx;
+  font-weight: 700;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  color: #4338ca;
+}
+
+.member-pill-pro {
+  background: #fff7d6;
+  border: 1px solid #f2d27c;
+  color: #8a5a00;
+}
+
+.member-pill-max {
+  background: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
 .reward-box {
   padding: 10rpx 0;
   display: flex;
@@ -904,4 +951,85 @@
 
 .adContainer {
   width: 690rpx;
+}
+
+.adCard {
+  display: flex;
+  align-items: stretch;
+  gap: 20rpx;
+  padding: 20rpx;
+  border-radius: 20rpx;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+}
+
+.adCard-image {
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 16rpx;
+  flex-shrink: 0;
+  background: #e5e7eb;
+}
+
+.adCard-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.adCard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+}
+
+.adCard-badge {
+  min-width: 68rpx;
+  height: 40rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  background: #111827;
+  color: #ffffff;
+  font-size: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.adCard-button {
+  min-width: 136rpx;
+  max-width: 220rpx;
+  height: 48rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.adCard-title {
+  margin-top: 16rpx;
+  color: #111827;
+  font-size: 30rpx;
+  font-weight: 600;
+  line-height: 42rpx;
+}
+
+.adCard-subtitle {
+  margin-top: 10rpx;
+  color: #6b7280;
+  font-size: 24rpx;
+  line-height: 36rpx;
 }

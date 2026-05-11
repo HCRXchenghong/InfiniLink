@@ -10,6 +10,23 @@
       <image class="addimage" src="/image/newcircle.png" />建圈
     </view>
   </view>
+  <view class="circle-membership-entry circle-membership-entry-{{circleMembershipPrompt.tone}}"
+    wx:if="{{circleMembershipPrompt}}">
+    <view class="circle-membership-badge">{{circleMembershipPrompt.badge}}</view>
+    <view class="circle-membership-title">{{circleMembershipPrompt.title}}</view>
+    <view class="circle-membership-desc">{{circleMembershipPrompt.desc}}</view>
+    <view class="circle-membership-items">
+      <view class="circle-membership-item" wx:for="{{circleMembershipPrompt.entries}}" wx:key="title"
+        wx:for-item="entry">
+        <text class="circle-membership-item-label">{{entry.title}}</text>
+        <text class="circle-membership-item-value">{{entry.value}}</text>
+      </view>
+    </view>
+    <view bindtap="onCircleMembershipPromptTap" class="circle-membership-action"
+      data-action="{{circleMembershipPrompt.action}}" data-scene="{{circleMembershipPrompt.scene}}">
+      {{circleMembershipPrompt.buttonText}}
+    </view>
+  </view>
   <view class="set-heigth">
     <view class="containers" wx:if="{{keyword == ''}}">
       <view class="nav_left">
@@ -63,7 +80,7 @@
             </view>
           </view>
           <view class="empty-view" wx:if="{{subcats!=null&&subcats.length==0&&!subcatsloading}}">
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            <empty-view icon="/backend/static/illustrations/circles-rafiki.png" title="空">
             </empty-view>
           </view>
         </scroll-view>
@@ -95,7 +112,7 @@
             </view>
           </view>
           <view wx:if="{{keywordSubcats!=null&&keywordSubcats.length==0&&!keywordSubcatsloading}}">
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            <empty-view icon="/backend/static/illustrations/circles-rafiki.png" title="空">
             </empty-view>
           </view>
         </scroll-view>
@@ -107,9 +124,9 @@
 <l-popup show="{{vipPopup}}" bind:lintap="vipPopupTap" animation="true" z-index="99">
   <view class="vip-box">
     <image class="vip-box-image"
-      src="http://127.0.0.1/storage/wxprogram/image/Sharing%20Ideas-amico.png" mode="aspectFill" />
+      src="/backend/static/illustrations/world-rafiki.png" mode="aspectFill" />
     <view class="vip-box-conent-text">
-      限活动有效期内点击下方分享按钮成功分享至<p>200人</p>以上的微信群聊，即可获得轻航大会员。
+      限活动有效期内点击下方分享按钮成功分享至<p>200人</p>以上的微信群聊，即可获得InfiniLink 会员。
     </view>
     <button class="vip-box-btn" open-type="share">分享免费领取</button>
     <view class="vip-box-conent">

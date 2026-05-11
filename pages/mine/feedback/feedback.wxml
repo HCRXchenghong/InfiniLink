@@ -1,4 +1,9 @@
 <view class="container">
+    <view class="support-entry" wx:if="{{supportEntryTitle}}">
+        <view class="support-entry-badge">MAX 专属</view>
+        <view class="support-entry-title">{{supportEntryTitle}}</view>
+        <view class="support-entry-desc">{{supportEntryDesc}}</view>
+    </view>
     <view class="item-h">
         <text class="item-title">反馈问题类型</text>
         <picker bindchange="bindPickerChange" value="{{index}}" range="{{cats}}">
@@ -11,7 +16,7 @@
     <view class="item">
         <text class="item-title">问题和意见</text>
         <textarea bindinput="onInputChange" class="item-area" data-type="{{2}}" maxlength="{{descMaxLength}}"
-            placeholder="请描述您在轻航小程序时遇到的问题和意见，我们会尽快帮助您解决。" value="{{feedback_content}}"></textarea>
+            placeholder="请描述您在 InfiniLink 使用过程中遇到的问题和意见，我们会尽快帮助您解决。" value="{{feedback_content}}"></textarea>
         <text class="item-tip">{{descLength}}/{{descMaxLength}}</text>
     </view>
     <view bindtap="userFeedback" class="bottom">提交反馈</view>

@@ -93,9 +93,22 @@ const creatForums = function () {
   }, "POST").then(function (res) {
     wx.hideLoading();
     if (res.code == 200) {
+      if (res.data && res.data.moderated) {
+        wx.showModal({
+          title: '内容已下架',
+          content: '您发布的信息存在违规，已为您下架处理。' + (res.data.reason ? '\n原因：' + res.data.reason : ''),
+          showCancel: false,
+          confirmText: "我知道了",
+          confirmColor: "#333333",
+          success() {
+            wx.navigateBack();
+          }
+        })
+        return;
+      }
       wx.showModal({
         title: '发布成功',
-        content: '睡醒审帖员会在24小时之内您审帖，请您耐心等待！',
+        content: 'InfiniLink 审核团队会在 24 小时内完成审核，请您耐心等待！',
         showCancel: false,
         confirmText: "朕知道了",
         confirmColor: "#333333",

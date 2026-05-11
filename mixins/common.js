@@ -1,17 +1,429 @@
 const api = require('../config/api');
 const util = require('../utils/util');
 const Poster = require('../components/poster/poster/poster');
+const levelUtils = require('../utils/level');
 
 const app = getApp();
+const DEFAULT_PAGE_DATA = {
+  posterConfig: {},
+  replyName: '说点什么',
+  showTextarea: false,
+  showComments: false,
+  focus: false,
+  inputValue: '',
+  imageValue: '',
+  commentId: '',
+  replyUserId: '',
+  postsId: 0,
+  comments: [],
+  commentCount: 0,
+  commentIsNull: false,
+  cPage: 1,
+  isCommentShow: false,
+  isCommentPage: false,
+  rewardPopup: false,
+  rewardDialog: false,
+  rewardPrice: '',
+  exceptionalList: [],
+  exceptionalCount: 0,
+  showDialog: false,
+  showShare: false,
+  popupshow: false,
+  indexvideo: -1,
+  bounced: false,
+  isCollect: false,
+  isMyPosts: false,
+  subject: {},
+  feedAdCard: null,
+  carouselAds: [],
+  carouselAdIndex: 0,
+  detailAdCard: null,
+  splashAdCard: null,
+  showSplashAd: false,
+};
+
+function normalizeText(value, fallback = '') {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    return value.map(function (item) {
+      return normalizeText(item, '');
+    }).filter(Boolean).join(' ');
+  }
+  if (value && typeof value === 'object') {
+    if (typeof value.text === 'string') {
+      return value.text;
+    }
+    if (typeof value.content === 'string') {
+      return value.content;
+    }
+    if (typeof value.posts_content === 'string') {
+      return value.posts_content;
+    }
+    if (typeof value.search_content === 'string') {
+      return value.search_content;
+    }
+  }
+  return fallback;
+}
+
+function normalizeArray(value) {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeObject(value, fallback) {
+  const base = fallback && typeof fallback === 'object' ? Object.assign({}, fallback) : {};
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return base;
+  }
+  return Object.assign(base, value);
+}
+
+function normalizeImageItem(value) {
+  const image = normalizeObject(value, {
+    img_url: '',
+    url: ''
+  });
+  image.img_url = normalizeText(image.img_url || image.url);
+  image.url = normalizeText(image.url || image.img_url);
+  return image;
+}
+
+function normalizeUser(value) {
+  const user = normalizeObject(value, {
+    id: 0,
+    user_name: '',
+    user_avatar: '',
+    is_official: 0,
+    is_authentication: 0,
+    is_member: 0,
+    membership_tier: '',
+    membership_active: 0,
+    membership_expires_at: '',
+    membership_expire_text: '',
+    membership_days_left: 0,
+    level_no: 1,
+    level_label: 'LV1',
+    level_score: 0,
+    level_next_no: 1,
+    level_next_label: 'LV1',
+    level_score_to_next: 0,
+    level_progress_percent: 0,
+    level_max_reached: 0
+  });
+  user.user_name = normalizeText(user.user_name);
+  user.user_avatar = normalizeText(user.user_avatar);
+  user.id = Number(user.id || 0);
+  user.is_official = Number(user.is_official || 0);
+  user.is_authentication = Number(user.is_authentication || 0);
+  user.membership_expires_at = normalizeText(user.membership_expires_at);
+  user.membership_expire_text = normalizeText(user.membership_expire_text);
+  user.membership_days_left = Number(user.membership_days_left || 0);
+  user.is_member = Number(user.is_member || user.membership_active || 0);
+  user.membership_tier = normalizeText(user.membership_tier).toLowerCase();
+  if (user.is_member === 1 && user.membership_expires_at) {
+    const expireTs = Date.parse(user.membership_expires_at);
+    if (!Number.isNaN(expireTs) && expireTs <= Date.now()) {
+      user.is_member = 0;
+      user.membership_tier = '';
+    }
+  }
+  user.membership_active = user.is_member;
+  if (user.is_member === 1 && user.membership_tier !== 'pro' && user.membership_tier !== 'max') {
+    user.membership_tier = 'pro';
+  }
+  if (user.is_member !== 1) {
+    user.membership_tier = '';
+  }
+  user.level_no = Math.max(1, Number(user.level_no || 1));
+  user.level_label = normalizeText(user.level_label, 'LV' + user.level_no);
+  user.level_score = Number(user.level_score || 0);
+  user.level_next_no = Math.max(user.level_no, Number(user.level_next_no || user.level_no));
+  user.level_next_label = normalizeText(user.level_next_label, 'LV' + user.level_next_no);
+  user.level_score_to_next = Math.max(0, Number(user.level_score_to_next || 0));
+  user.level_progress_percent = Math.max(0, Math.min(100, Number(user.level_progress_percent || 0)));
+  user.level_max_reached = Number(user.level_max_reached || 0);
+  return levelUtils.decorateLevelUser(user);
+}
+
+function normalizeCircle(value) {
+  const circle = normalizeObject(value, {
+    id: 0,
+    circle_name: ''
+  });
+  circle.id = Number(circle.id || 0);
+  circle.circle_name = normalizeText(circle.circle_name);
+  return circle;
+}
+
+function normalizeAddress(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length === 0) {
+    return null;
+  }
+  const address = normalizeObject(value, {
+    latitude: 0,
+    longitude: 0,
+    address_detailed: ''
+  });
+  address.latitude = Number(address.latitude || 0);
+  address.longitude = Number(address.longitude || 0);
+  address.address_detailed = normalizeText(address.address_detailed);
+  if (!address.address_detailed && !address.latitude && !address.longitude) {
+    return null;
+  }
+  return address;
+}
+
+function normalizeTag(value) {
+  const tag = normalizeObject(value, {
+    id: 0,
+    tags_name: ''
+  });
+  tag.id = Number(tag.id || 0);
+  tag.tags_name = normalizeText(tag.tags_name);
+  return tag;
+}
+
+function normalizeCommentChild(value) {
+  const reply = normalizeObject(value, {
+    id: 0,
+    user_id: 0,
+    user_name: '',
+    user_avatar: '',
+    comment_agent_id: 0,
+    comment_agent_name: '',
+    comment_content: '',
+    comment_img_url: '',
+    format_time: '',
+    like_count: 0,
+    is_like: false,
+    imgList: []
+  });
+  reply.user_name = normalizeText(reply.user_name);
+  reply.user_avatar = normalizeText(reply.user_avatar);
+  reply.comment_agent_name = normalizeText(reply.comment_agent_name);
+  reply.comment_content = normalizeText(reply.comment_content);
+  reply.comment_img_url = normalizeText(reply.comment_img_url);
+  reply.format_time = normalizeText(reply.format_time);
+  reply.imgList = normalizeArray(reply.imgList).map(normalizeImageItem);
+  return reply;
+}
+
+function normalizeCommentItem(value) {
+  const comment = normalizeObject(value, {
+    id: 0,
+    user_id: 0,
+    uid: 0,
+    posts_user_id: 0,
+    user_name: '',
+    user_avatar: '',
+    comment_content: '',
+    comment_img_url: '',
+    format_time: '',
+    like_count: 0,
+    is_like: false,
+    child: [],
+    imgList: []
+  });
+  comment.user_name = normalizeText(comment.user_name);
+  comment.user_avatar = normalizeText(comment.user_avatar);
+  comment.comment_content = normalizeText(comment.comment_content);
+  comment.comment_img_url = normalizeText(comment.comment_img_url);
+  comment.format_time = normalizeText(comment.format_time);
+  comment.child = normalizeArray(comment.child).map(normalizeCommentChild);
+  comment.imgList = normalizeArray(comment.imgList).map(normalizeImageItem);
+  return comment;
+}
+
+function normalizeExceptionalItem(value) {
+  const exceptional = normalizeObject(value, {
+    user_avatar: '',
+    exceptional_date: '',
+    exceptional_price: 0,
+    user: {}
+  });
+  exceptional.user_avatar = normalizeText(exceptional.user_avatar);
+  exceptional.exceptional_date = normalizeText(exceptional.exceptional_date);
+  exceptional.user = normalizeUser(exceptional.user);
+  return exceptional;
+}
+
+function normalizeVideo(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const video = normalizeObject(value, {
+    show_type: 0,
+    video_url: '',
+    video_thumb_url: ''
+  });
+  video.show_type = Number(video.show_type || 0);
+  video.video_url = normalizeText(video.video_url);
+  video.video_thumb_url = normalizeText(video.video_thumb_url);
+  if (!video.video_url) {
+    return null;
+  }
+  return video;
+}
+
+function normalizePostItem(value) {
+  const post = normalizeObject(value, {
+    id: 0,
+    posts_content: '',
+    format_time: '',
+    images: [],
+    tags: [],
+    comment: [],
+    exceptional: [],
+    user: {},
+    circle: {},
+    address: null,
+    video: null,
+    comment_count: 0,
+    like_count: 0,
+    exceptional_count: 0
+  });
+  post.posts_content = normalizeText(post.posts_content);
+  post.format_time = normalizeText(post.format_time);
+  post.images = normalizeArray(post.images).map(normalizeImageItem).filter(function (item) {
+    return !!item.img_url;
+  });
+  post.tags = normalizeArray(post.tags).map(normalizeTag).filter(function (item) {
+    return !!item.tags_name;
+  });
+  post.comment = normalizeArray(post.comment).map(normalizeCommentItem);
+  post.exceptional = normalizeArray(post.exceptional).map(normalizeExceptionalItem);
+  post.user = normalizeUser(post.user);
+  post.circle = normalizeCircle(post.circle);
+  post.address = normalizeAddress(post.address);
+  post.video = normalizeVideo(post.video);
+  return post;
+}
+
+function normalizeStickyItem(value) {
+  const sticky = normalizeObject(value, {
+    id: 0,
+    posts_content: '',
+    imagea: {}
+  });
+  sticky.posts_content = normalizeText(sticky.posts_content);
+  sticky.imagea = normalizeImageItem(sticky.imagea);
+  return sticky;
+}
+
+function normalizeSearchCarouselItem(value) {
+  if (typeof value === 'string') {
+    return {
+      search_content: value
+    };
+  }
+  const item = normalizeObject(value, {
+    search_content: ''
+  });
+  item.search_content = normalizeText(item.search_content || item.title || item.content, '');
+  return item;
+}
+
+function logCommonError(scope, err) {
+  try {
+    console.error('[InfiniLink common:' + scope + ']', err);
+  } catch (error) {}
+}
+
+function normalizeOperationAdImageUrl(url) {
+  const value = normalizeText(url);
+  if (!value) {
+    return '';
+  }
+
+  if (/^https:\/\//i.test(value) || value.indexOf('/backend/static/illustrations/') === 0) {
+    return value;
+  }
+
+  const localIllustration = value.match(/^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\/assets\/illustrations\/([^/?#]+)$/i);
+  if (localIllustration && localIllustration[1]) {
+    return '/backend/static/illustrations/' + localIllustration[1];
+  }
+
+  return value;
+}
+
+function normalizeOperationAd(value) {
+  const ad = normalizeObject(value, {
+    id: '',
+    slot: 'feed_stream',
+    title: '',
+    subtitle: '',
+    image_url: '',
+    action_type: 'none',
+    action_value: '',
+    button_text: '立即查看',
+    enabled: false,
+    sort_order: 0
+  });
+  ad.title = normalizeText(ad.title);
+  ad.subtitle = normalizeText(ad.subtitle);
+  ad.image_url = normalizeOperationAdImageUrl(ad.image_url);
+  ad.action_type = normalizeText(ad.action_type, 'none');
+  ad.action_value = normalizeText(ad.action_value);
+  ad.button_text = normalizeText(ad.button_text, '立即查看');
+  ad.enabled = !!ad.enabled;
+  return ad;
+}
+
+function normalizeOperationAdLoadOptions(options) {
+  if (typeof options === 'string') {
+    return {
+      targetKey: options,
+      multiple: false,
+      visibleKey: '',
+      resetIndexKey: '',
+    };
+  }
+
+  const settings = normalizeObject(options, {
+    targetKey: 'feedAdCard',
+    multiple: false,
+    visibleKey: '',
+    resetIndexKey: '',
+  });
+  settings.targetKey = normalizeText(settings.targetKey, 'feedAdCard');
+  settings.visibleKey = normalizeText(settings.visibleKey);
+  settings.resetIndexKey = normalizeText(settings.resetIndexKey);
+  settings.multiple = !!settings.multiple;
+  return settings;
+}
+
+function isExternalOperationAdLink(value) {
+  const link = normalizeText(value).toLowerCase();
+  return link.indexOf('http://') === 0 || link.indexOf('https://') === 0;
+}
+
+function trackPageInteraction(source) {
+  if (util && typeof util.recordUserInteraction === 'function') {
+    util.recordUserInteraction(source);
+  }
+}
+
+function flushPageInteraction(source) {
+  if (util && typeof util.flushTrackedActiveUsage === 'function') {
+    util.flushTrackedActiveUsage(source, true);
+  }
+}
 
 /**
  * 查询用户是否有未读信息
  */
 const getSysMessageCount = function () {
-  return new Promise(function (resolve, reject) {
-    util.request(api.getSysMessageCountUrl).then(function (res) {
-      resolve(res.data);
-    })
+  return util.request(api.getSysMessageCountUrl).then(function (res) {
+    return Number(res.data || 0);
+  }).catch(function (err) {
+    logCommonError('getSysMessageCount', err);
+    return 0;
   })
 }
 // 选择图片去剪裁
@@ -152,6 +564,12 @@ const getindexBannerList = function () {
     args.banner = res.data;
     args.swiperload = false;
     that.setData(args)
+  }).catch(function (err) {
+    logCommonError('getindexBannerList', err);
+    that.setData({
+      banner: [],
+      swiperload: false
+    })
   })
 }
 // 推荐帖子接口
@@ -163,17 +581,24 @@ const indexPosts = function () {
     plate_id: that.data.plateId
   }).then(function (res) {
     let data = res.data;
+    let items = normalizeArray(data.data).map(normalizePostItem);
     let args = {};
-    if (data.data.length == 0) {
+    if (items.length == 0) {
       args.isLastPage = true;
     } else {
-      args.posts = that.data.posts.concat(data.data);
+      args.posts = normalizeArray(that.data.posts).concat(items);
       args.page = data.current_page;
       args.loadmoreShow = false;
       args.isLastPage = false;
     }
     args.topicload = false;
     that.setData(args)
+  }).catch(function (err) {
+    logCommonError('indexPosts', err);
+    that.setData({
+      topicload: false,
+      loadmoreShow: false
+    })
   })
 }
 // 热门标签帖子接口
@@ -181,9 +606,15 @@ const indexChoiceness = function () {
   let that = this;
   util.request(api.indexChoicenessUrl).then(function (res) {
     let args = {};
-    args.sticky = res.data;
+    args.sticky = normalizeArray(res.data).map(normalizeStickyItem);
     args.stickyload = false;
     that.setData(args)
+  }).catch(function (err) {
+    logCommonError('indexChoiceness', err);
+    that.setData({
+      sticky: [],
+      stickyload: false
+    })
   })
 }
 // 热门标签接口
@@ -209,7 +640,7 @@ const postsDetail = function (id) {
   }).then(function (res) {
     if (res.status) {
       let args = {};
-      args.posts = res.data;
+      args.posts = normalizeArray(Array.isArray(res.data) ? res.data : [res.data]).map(normalizePostItem);
       args.topicload = false;
       that.setData(args);
     }
@@ -218,15 +649,28 @@ const postsDetail = function (id) {
 // 关注接口
 const actionFollow = function (userId) {
   return new Promise(function (resolve, reject) {
+    const normalizedUserId = Number(userId);
+    if (!normalizedUserId || normalizedUserId <= 0) {
+      reject({
+        status: false,
+        message: '关注对象不存在'
+      });
+      return;
+    }
     util.request(api.userFollowUrl, {
-      posts_user_id: userId
+      posts_user_id: normalizedUserId
     }, "POST").then(function (res) {
       if (res.status) {
         resolve(res);
       } else {
         reject(res);
       }
-    })
+    }).catch(function (err) {
+      reject({
+        status: false,
+        message: err && err.message ? err.message : (typeof err === 'string' ? err : '关注失败，请稍后重试')
+      });
+    });
   })
 }
 // 用户界面关注接口
@@ -246,6 +690,12 @@ const userInfoActionFollow = function (e) {
         duration: 1500
       })
     }
+  }).catch((err) => {
+    wx.showToast({
+      title: err && err.message ? err.message : '关注失败，请稍后重试',
+      icon: 'none',
+      duration: 1500
+    })
   })
 }
 
@@ -267,6 +717,12 @@ const userActionFollow = function (e) {
         duration: 1500
       })
     }
+  }).catch((err) => {
+    wx.showToast({
+      title: err && err.message ? err.message : '关注失败，请稍后重试',
+      icon: 'none',
+      duration: 1500
+    })
   })
 }
 // 搜索接口
@@ -327,9 +783,151 @@ const searchCarouselList = function () {
   let that = this;
   util.request(api.searchCarouselListUrl).then(function (res) {
     let args = {};
-    args.searchText = res.data;
+    args.searchText = normalizeArray(res.data).map(normalizeSearchCarouselItem).filter(function (item) {
+      return !!item.search_content;
+    });
+    if (args.searchText.length <= 0) {
+      args.searchText = [{
+        search_content: '点我搜索'
+      }];
+    }
     that.setData(args);
+  }).catch(function (err) {
+    logCommonError('searchCarouselList', err);
+    that.setData({
+      searchText: [{
+        search_content: '点我搜索'
+      }]
+    })
   })
+}
+
+const loadOperationAd = function (slot = 'feed_stream', options) {
+  let that = this;
+  const settings = normalizeOperationAdLoadOptions(options);
+  return util.request(api.operationAdsUrl, {
+    slot: slot
+  }).then(function (res) {
+    const ads = normalizeArray(res.data).map(normalizeOperationAd).filter(function (item) {
+      return item.enabled && !!item.image_url;
+    });
+    const payload = {};
+    payload[settings.targetKey] = settings.multiple ? ads : (ads.length > 0 ? ads[0] : null);
+    if (settings.visibleKey) {
+      payload[settings.visibleKey] = settings.multiple ? ads.length > 0 : !!payload[settings.targetKey];
+    }
+    if (settings.resetIndexKey) {
+      payload[settings.resetIndexKey] = 0;
+    }
+    that.setData(payload);
+    return ads;
+  }).catch(function (err) {
+    logCommonError('loadOperationAd', err);
+    const payload = {};
+    payload[settings.targetKey] = settings.multiple ? [] : null;
+    if (settings.visibleKey) {
+      payload[settings.visibleKey] = false;
+    }
+    if (settings.resetIndexKey) {
+      payload[settings.resetIndexKey] = 0;
+    }
+    that.setData(payload);
+    return [];
+  })
+}
+
+const openOperationAd = function (input) {
+  const ad = input && input.currentTarget && input.currentTarget.dataset ? input.currentTarget.dataset.ad : input;
+  const normalizedAd = normalizeOperationAd(ad);
+  if (!normalizedAd || !normalizedAd.enabled) {
+    return;
+  }
+
+  if (normalizedAd.action_type !== 'none' && isExternalOperationAdLink(normalizedAd.action_value)) {
+    wx.navigateTo({
+      url: '/pages/web-view/index?url=' + encodeURIComponent(normalizedAd.action_value),
+      fail: function () {
+        wx.showToast({
+          title: '链接暂时无法打开',
+          icon: 'none'
+        })
+      }
+    });
+    return;
+  }
+
+  if (normalizedAd.action_type === 'path' && normalizedAd.action_value) {
+    wx.navigateTo({
+      url: normalizedAd.action_value,
+      fail: function () {
+        wx.switchTab({
+          url: normalizedAd.action_value,
+          fail: function () {
+            wx.showToast({
+              title: '页面暂时无法打开',
+              icon: 'none'
+            })
+          }
+        })
+      }
+    });
+    return;
+  }
+
+  if (normalizedAd.action_type === 'webview' && normalizedAd.action_value) {
+    wx.navigateTo({
+      url: '/pages/web-view/index?url=' + encodeURIComponent(normalizedAd.action_value),
+      fail: function () {
+        wx.showToast({
+          title: '链接暂时无法打开',
+          icon: 'none'
+        })
+      }
+    });
+  }
+}
+
+const maybeShowSplashAd = function (slot = 'splash_screen') {
+  const appInstance = getApp();
+  if (appInstance && appInstance.globalData && appInstance.globalData.splashAdShown) {
+    this.setData({
+      showSplashAd: false,
+      splashAdCard: null
+    });
+    return Promise.resolve([]);
+  }
+
+  return loadOperationAd.call(this, slot, {
+    targetKey: 'splashAdCard',
+    visibleKey: 'showSplashAd'
+  }).then(function (ads) {
+    if (ads.length > 0 && appInstance && appInstance.globalData) {
+      appInstance.globalData.splashAdShown = true;
+    }
+    return ads;
+  });
+}
+
+const closeSplashAd = function () {
+  this.setData({
+    showSplashAd: false
+  });
+}
+
+const openSplashOperationAd = function () {
+  const ad = this.data && this.data.splashAdCard ? this.data.splashAdCard : null;
+  this.setData({
+    showSplashAd: false
+  });
+  if (ad) {
+    openOperationAd.call(this, ad);
+  }
+}
+
+const onOperationAdSwiperChange = function (e) {
+  this.setData({
+    carouselAdIndex: Number(e && e.detail ? e.detail.current : 0)
+  });
 }
 
 // 标签获取帖子列表（瀑布流）
@@ -361,6 +959,8 @@ const userPlate = function () {
     let args = {};
     args.header = that.data.header.concat(res.data);
     that.setData(args);
+  }).catch(function (err) {
+    logCommonError('userPlate', err);
   })
 }
 
@@ -389,7 +989,7 @@ const userPlateAdd = function (e) {
       }
     } else {
       wx.showToast({
-        title: '遇到了一个未知错误，请联系睡醒官方客服反馈！',
+        title: '遇到了一个未知错误，请联系 InfiniLink 官方客服反馈！',
         icon: 'none',
         duration: 1500
       })
@@ -413,7 +1013,7 @@ const userPlateDelete = function (e) {
       that.setData(args);
     } else {
       wx.showToast({
-        title: '遇到了一个未知错误，请联系睡醒官方客服反馈！',
+        title: '遇到了一个未知错误，请联系 InfiniLink 官方客服反馈！',
         icon: 'none',
         duration: 1500
       })
@@ -467,6 +1067,12 @@ const postsActionFollow = function (e) {
         duration: 1500
       })
     }
+  }).catch((err) => {
+    wx.showToast({
+      title: err && err.message ? err.message : '关注失败，请稍后重试',
+      icon: 'none',
+      duration: 1500
+    })
   })
 }
 // 帖子喜欢接口
@@ -832,7 +1438,7 @@ const tapComment = function (e) {
     })
   }
   this.setData({
-    showTextarea: !this.data.showTextarea,
+    showTextarea: true,
     focus: true,
     commentId: commentId,
     replyUserId: replyUserId,
@@ -842,7 +1448,7 @@ const tapComment = function (e) {
 // 关闭评论输入框
 const shutCommentShow = function () {
   this.setData({
-    showTextarea: !this.data.showTextarea,
+    showTextarea: false,
     focus: false,
     commentId: "",
     replyUserId: "",
@@ -851,15 +1457,31 @@ const shutCommentShow = function () {
 }
 //评论Input监听/发送评论
 const onInputComment = function (e) {
+  let that = this;
+  var value = (e.detail.value || '').trim();
+  let imageValue = that.data.imageValue;
+  let postsId = Number(that.data.postsId || 0);
+  let commentId = that.data.commentId;
+  let replyUserId = that.data.replyUserId;
+  if (!postsId) {
+    wx.showToast({
+      title: '评论对象不存在',
+      icon: 'none',
+      duration: 1500
+    })
+    return;
+  }
+  if (!value && !imageValue) {
+    wx.showToast({
+      title: '说点什么再发送吧',
+      icon: 'none',
+      duration: 1500
+    })
+    return;
+  }
   wx.showLoading({
     title: ' ',
   })
-  let that = this;
-  var value = e.detail.value;
-  let imageValue = that.data.imageValue;
-  let postsId = that.data.postsId;
-  let commentId = that.data.commentId;
-  let replyUserId = that.data.replyUserId;
   util.request(api.commentAddUrl, {
     posts_id: postsId,
     comment_content: value,
@@ -868,13 +1490,25 @@ const onInputComment = function (e) {
     reply_user_id: replyUserId,
   }, "POST").then(function (res) {
     if (res.status) {
-      wx.hideLoading();
       that.setData({
-        showTextarea: !that.data.showTextarea,
+        showTextarea: false,
         focus: false,
+        inputValue: '',
+        imageValue: '',
+        commentId: '',
+        replyUserId: '',
+        replyName: '说点什么',
       })
+      if (res.data && res.data.moderated) {
+        wx.showToast({
+          title: '您的评论存在违规，已为您下架处理',
+          icon: 'none',
+          duration: 2200
+        })
+        return;
+      }
       wx.showToast({
-        title: '评论成功！审核中...',
+        title: '评论成功！',
         icon: 'none',
         duration: 1500
       })
@@ -885,15 +1519,22 @@ const onInputComment = function (e) {
         icon: 'none',
         duration: 1500
       })
-      wx.hideLoading();
     }
+  }).catch(function (err) {
+    wx.showToast({
+      title: err && err.message ? err.message : (typeof err === 'string' ? err : '评论失败，请稍后重试'),
+      icon: 'none',
+      duration: 1500
+    })
+  }).finally(function () {
+    wx.hideLoading();
   })
 }
 //添加评论图片
 const addCommentPic = function (e) {
   this.uploadPictures(1, e.currentTarget.dataset.name);
   this.setData({
-    showTextarea: !this.data.showTextarea,
+    showTextarea: false,
     focus: false,
   })
 }
@@ -933,7 +1574,7 @@ const sharePosterClick = function () {
               y: 94,
               baseLine: 'middle',
               textAlign: 'center',
-              text: "睡醒，专属互联网人的内容兴趣社区",
+              text: "InfiniLink，连接圈子、内容与灵感",
               fontSize: 32,
               color: '#000',
             }, {
@@ -1012,7 +1653,7 @@ const sharePosterClick = function () {
               y: 94,
               baseLine: 'middle',
               textAlign: 'center',
-              text: "睡醒，专属互联网人的内容兴趣社区",
+              text: "InfiniLink，连接圈子、内容与灵感",
               fontSize: 32,
               color: '#000',
             }, {
@@ -1070,7 +1711,7 @@ const sharePosterClick = function () {
       });
     } else {
       wx.showToast({
-        title: '生成海报失败了，请联系睡醒官方客服反馈！',
+        title: '生成海报失败了，请联系 InfiniLink 官方客服反馈！',
         icon: 'none',
         duration: 1500
       })
@@ -1210,6 +1851,56 @@ const onPreviewImage = function (e) {
 }
 
 module.exports = function (obj) {
+  obj.data = Object.assign({}, DEFAULT_PAGE_DATA, obj.data || {});
+
+  const originalOnShow = obj.onShow;
+  const originalOnHide = obj.onHide;
+  const originalOnUnload = obj.onUnload;
+  const originalOnPageScroll = obj.onPageScroll;
+
+  obj.onShow = function () {
+    trackPageInteraction('page_show');
+    if (typeof originalOnShow === 'function') {
+      return originalOnShow.apply(this, arguments);
+    }
+  };
+
+  obj.onHide = function () {
+    flushPageInteraction('page_hide');
+    if (typeof originalOnHide === 'function') {
+      return originalOnHide.apply(this, arguments);
+    }
+  };
+
+  obj.onUnload = function () {
+    flushPageInteraction('page_unload');
+    if (typeof originalOnUnload === 'function') {
+      return originalOnUnload.apply(this, arguments);
+    }
+  };
+
+  obj.onPageScroll = function () {
+    const now = Date.now();
+    if (!this.__lastActivityScrollAt || now - this.__lastActivityScrollAt > 1500) {
+      this.__lastActivityScrollAt = now;
+      trackPageInteraction('scroll');
+    }
+    if (typeof originalOnPageScroll === 'function') {
+      return originalOnPageScroll.apply(this, arguments);
+    }
+  };
+
+  obj.onUserTouchActivity = function () {
+    const now = Date.now();
+    if (!this.__lastActivityTouchAt || now - this.__lastActivityTouchAt > 1000) {
+      this.__lastActivityTouchAt = now;
+      trackPageInteraction('touch');
+    }
+  };
+
+  obj.onUserInputActivity = function () {
+    trackPageInteraction('input');
+  };
 
   obj.onPreviewImage = onPreviewImage;
   obj.onPreviewPicture = onPreviewPicture;
@@ -1224,6 +1915,12 @@ module.exports = function (obj) {
   obj.onClickReward = onClickReward;
   obj.rewardTap = rewardTap;
   obj.searchCarouselList = searchCarouselList;
+  obj.loadOperationAd = loadOperationAd;
+  obj.openOperationAd = openOperationAd;
+  obj.maybeShowSplashAd = maybeShowSplashAd;
+  obj.closeSplashAd = closeSplashAd;
+  obj.openSplashOperationAd = openSplashOperationAd;
+  obj.onOperationAdSwiperChange = onOperationAdSwiperChange;
   obj.getSysMessageCount = getSysMessageCount;
   obj.userTap = userTap;
   obj.userInfoActionFollow = userInfoActionFollow;

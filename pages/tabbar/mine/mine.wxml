@@ -1,7 +1,8 @@
 <wxs module="filters" src="../../../utils/fixed.wxs"></wxs>
 <import src="/pages/template/circle.wxml" />
+<view bindtouchstart="onUserTouchActivity">
 <navBar iconTheme="{{iconTheme}}" background="rgba(255, 255, 255, {{navbarTrans}})"
-    color="rgba({{color}}, {{navbarTrans}})" title="{{userInfo.user_name}}">
+    color="rgba({{color}}, {{navbarTrans}})" title="{{userInfo && userInfo.user_name ? userInfo.user_name : ''}}">
   <view bindtap="toScanCode" slot="left" class='lxy-nav-bar__logo'>
     <image src="/image/qr-scan-line.png" />
   </view>
@@ -10,7 +11,7 @@
     <image class="banner" mode="aspectFill" src="{{userInfo.user_background_maps}}"></image>
     <view class="gradient"></view>
     <view class="own-header">
-        <view class="header-top" wx:if="{{userInfo}}">
+        <view class="header-top" wx:if="{{userInfo && userInfo.user_name}}">
             <navigator class="own-header-img-div" url="/pages/mine/editmine/editmine">
                 <image class="own-header-img" lazyLoad="true" mode="aspectFill" src="{{userInfo.user_avatar}}"></image>
             </navigator>
@@ -22,12 +23,15 @@
                 <image wx:if="{{userInfo.is_authentication == 1}}" data-type="1" bindtap="popupShowTap"
                     class="header-labels" src="/image/authentication.png">
                 </image>
-                <image wx:if="{{userInfo.is_member == 1}}" data-type="2" bindtap="popupShowTap" class="header-labels"
-                    src="/image/vip.png">
-                </image>
-                <image wx:if="{{userInfo.is_member != 1}}" bindtap="toVipTap" class="header-labels"
+                <view wx:if="{{userInfo.is_member == 1 && userInfo.membership_tier == 'max'}}" bindtap="toVipTap"
+                    class="membership-badge membership-badge-max">MAX</view>
+                <view wx:elif="{{userInfo.is_member == 1}}" bindtap="toVipTap"
+                    class="membership-badge membership-badge-pro">PRO</view>
+                <image wx:else bindtap="toVipTap" class="header-labels"
                     src="/image/w-vip.png">
                 </image>
+                <view bindtap="openLevelDetail"
+                    class="level-badge {{userInfo.level_theme_class || 'level-theme-1'}}">{{userInfo.level_badge_text || userInfo.level_label || 'LV1'}}</view>
             </view>
             <view class="header-abstract">{{userInfo.user_introduce}}</view>
         </view>
@@ -79,9 +83,9 @@
                 <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
                     rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
                     <template is="circle"
-                        data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+                        data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,feedAdCard}}" />
                     <view class="empty-box" wx:if="{{isNul}}">
-                        <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif"
+                        <empty-view icon="/backend/static/illustrations/no-data-cuate.png"
                             title="{{emptyTxt}}"></empty-view>
                         <block wx:if="{{currentItem==0}}">
                             <view class="bon-box" bindtap="addTap">立即发布</view>
@@ -109,8 +113,9 @@
         mode="aspectFill">
     </image>
     <view wx:if="{{typeShow == 3}}" bindtap='popupShowTap' class="like-box">
-        <image src="http://127.0.0.1/storage/wxprogram/image/Appreciation-bro.png" mode="aspectFill" />
+        <image src="/backend/static/illustrations/savings-cuate.png" mode="aspectFill" />
         <text>{{userInfo.user_name}} 获赞数</text>
         <view>{{userInfo.like_count}}</view>
     </view>
 </l-popup>
+</view>

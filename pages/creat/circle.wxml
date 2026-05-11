@@ -43,7 +43,7 @@
             </view>
           </view>
           <view class="empty-view" wx:if="{{subcats!=null&&subcats.length==0&&!subcatsloading}}">
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            <empty-view icon="/backend/static/illustrations/circles-rafiki.png" title="空">
             </empty-view>
           </view>
         </scroll-view>
@@ -77,7 +77,7 @@
             </view>
           </view>
           <view wx:if="{{keywordSubcats!=null&&keywordSubcats.length==0&&!keywordSubcatsloading}}">
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            <empty-view icon="/backend/static/illustrations/circles-rafiki.png" title="空">
             </empty-view>
           </view>
         </scroll-view>

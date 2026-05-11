@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -28,12 +29,14 @@ import (
 type contextKey string
 
 const userContextKey contextKey = "viewer_user_id"
+const adminContextKey contextKey = "admin_username"
 
 type Server struct {
 	cfg        config.Config
 	db         *pgxpool.Pool
 	redis      *redis.Client
 	httpClient *http.Client
+	inflight   chan struct{}
 	router     http.Handler
 }
 
@@ -46,6 +49,12 @@ type apiResponse struct {
 
 type jwtClaims struct {
 	UserID int64 `json:"uid"`
+	jwt.RegisteredClaims
+}
+
+type adminClaims struct {
+	Username string `json:"username"`
+	Role     string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -69,6 +78,10 @@ func New(cfg config.Config) (*Server, error) {
 	dbConfig.MaxConnLifetime = cfg.DBMaxConnLifetime
 	dbConfig.MaxConnIdleTime = cfg.DBMaxConnIdleTime
 	dbConfig.HealthCheckPeriod = cfg.DBHealthCheck
+	if dbConfig.ConnConfig.RuntimeParams == nil {
+		dbConfig.ConnConfig.RuntimeParams = map[string]string{}
+	}
+	dbConfig.ConnConfig.RuntimeParams["application_name"] = cfg.AppName
 
 	db, err := pgxpool.NewWithConfig(ctx, dbConfig)
 	if err != nil {
@@ -91,11 +104,21 @@ func New(cfg config.Config) (*Server, error) {
 		Password:     cfg.RedisPassword,
 		DB:           cfg.RedisDB,
 		PoolSize:     cfg.RedisPoolSize,
-		MinIdleConns: minInt(cfg.RedisPoolSize/8, 8),
+		MinIdleConns: minInt(cfg.RedisMinIdleConns, minInt(cfg.RedisPoolSize/8, 8)),
+		MaxRetries:   cfg.RedisMaxRetries,
+		DialTimeout:  cfg.RedisDialTimeout,
+		ReadTimeout:  cfg.RedisReadTimeout,
+		WriteTimeout: cfg.RedisWriteTimeout,
+		PoolTimeout:  cfg.RedisPoolTimeout,
 	})
 	if err := cache.Ping(ctx).Err(); err != nil {
 		log.Printf("redis unavailable, continuing without cache: %v", err)
 		cache = nil
+	}
+
+	var inflight chan struct{}
+	if cfg.InflightLimit > 0 {
+		inflight = make(chan struct{}, cfg.InflightLimit)
 	}
 
 	s := &Server{
@@ -104,7 +127,16 @@ func New(cfg config.Config) (*Server, error) {
 		redis: cache,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
+			Transport: &http.Transport{
+				Proxy:               http.ProxyFromEnvironment,
+				MaxIdleConns:        256,
+				MaxIdleConnsPerHost: 128,
+				MaxConnsPerHost:     256,
+				IdleConnTimeout:     90 * time.Second,
+				ForceAttemptHTTP2:   true,
+			},
 		},
+		inflight: inflight,
 	}
 	s.router = s.routes()
 	return s, nil
@@ -128,6 +160,7 @@ func (s *Server) routes() http.Handler {
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Recoverer)
+	r.Use(s.limitInflight)
 	r.Use(middleware.Timeout(30 * time.Second))
 	r.Use(s.cors)
 	r.Use(s.optionalAuth)
@@ -139,10 +172,42 @@ func (s *Server) routes() http.Handler {
 	r.HandleFunc("/storage/*", s.handleLegacyStorage)
 	r.Post("/payments/wechat/notify", s.handleWechatPayNotify)
 	r.Post("/payments/ifpay/notify", s.handleIFPayNotify)
+	r.Get("/api/v1/payment/ifpay/oauth/callback", s.handleIFPayOAuthCallback)
+
+	r.Route("/api/admin/v1", func(admin chi.Router) {
+		admin.Post("/login", s.handleAdminLogin)
+		admin.Group(func(secure chi.Router) {
+			secure.Use(s.requireAdmin)
+			secure.Get("/dashboard", s.handleAdminDashboard)
+			secure.Get("/users", s.handleAdminUsers)
+			secure.Post("/users/{userID}/action", s.handleAdminUserAction)
+			secure.Get("/authentications", s.handleAdminAuthentications)
+			secure.Post("/authentications/{authID}/action", s.handleAdminAuthenticationAction)
+			secure.Get("/posts", s.handleAdminPosts)
+			secure.Post("/posts/{postID}/action", s.handleAdminPostAction)
+			secure.Get("/circles", s.handleAdminCircles)
+			secure.Post("/circles/{circleID}/action", s.handleAdminCircleAction)
+			secure.Get("/feedbacks", s.handleAdminFeedbacks)
+			secure.Post("/feedbacks/{feedbackID}/action", s.handleAdminFeedbackAction)
+			secure.Get("/orders", s.handleAdminOrders)
+			secure.Get("/revenue", s.handleAdminRevenue)
+			secure.Get("/messages", s.handleAdminMessages)
+			secure.Get("/messages/{userID}", s.handleAdminMessageThread)
+			secure.Post("/messages/{userID}/reply", s.handleAdminMessageReply)
+			secure.Get("/risk", s.handleAdminRisk)
+			secure.Post("/risk/keywords", s.handleAdminRiskKeywords)
+			secure.Get("/system", s.handleAdminSystem)
+			secure.Post("/system/ads", s.handleAdminSystemAds)
+			secure.Post("/system/membership", s.handleAdminSystemMembership)
+			secure.Post("/system/growth-rules", s.handleAdminSystemGrowthRules)
+			secure.Get("/devops", s.handleAdminDevops)
+		})
+	})
 
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Post("/login", s.handleLogin)
 		api.Get("/configData", s.handleConfigData)
+		api.Get("/ads", s.handleOperationAds)
 		api.Get("/common/getClauseDetail", s.handleClauseDetail)
 		api.Post("/files/uploads", s.handleUpload)
 
@@ -205,6 +270,7 @@ func (s *Server) routes() http.Handler {
 		api.Get("/user/myUserWithdrawal", s.handleMyWithdrawals)
 		api.Get("/user/myUserExceptional", s.handleMyRewards)
 		api.Get("/user/freeGetVip", s.handleFreeGetVIP)
+		api.Post("/user/activity/ping", s.handleUserActivityPing)
 		api.Get("/user/plate", s.handleUserPlates)
 		api.Post("/user/plate/add", s.handleUserPlateAdd)
 		api.Post("/user/plate/delete", s.handleUserPlateDelete)
@@ -216,28 +282,57 @@ func (s *Server) routes() http.Handler {
 
 		api.Get("/massages/info", s.handleMessagesSummary)
 		api.Get("/massages/getDetailsMessages", s.handleMessagesDetail)
+		api.Get("/massages/readMessages", s.handleReadMessages)
 		api.Post("/massages/readMessages", s.handleReadMessages)
 		api.Post("/massages/addChat", s.handleAddChat)
+		api.Get("/massages/customerService", s.handleCustomerServiceProfile)
 		api.Get("/massages/getUserChat", s.handleGetUserChat)
 		api.Get("/massages/getUserChatList", s.handleGetUserChatList)
+		api.Get("/massages/readUserChat", s.handleReadUserChat)
 		api.Post("/massages/readUserChat", s.handleReadUserChat)
 		api.Get("/massages/getSysMessageCount", s.handleSysMessageCount)
+		api.Get("/massages/userDelMessage", s.handleDeleteMessageThread)
 		api.Post("/massages/userDelMessage", s.handleDeleteMessageThread)
 
 		api.Post("/order", s.handleOrder)
 		api.Get("/payment/options", s.handlePaymentOptions)
+		api.Get("/payment/ifpay/oauth/start", s.handleIFPayOAuthStart)
+		api.Get("/payment/ifpay/oauth/status", s.handleIFPayOAuthStatus)
 		api.Get("/order/status", s.handleOrderStatus)
 		api.Get("/getMembersPrice", s.handleMembersPrice)
+		api.Get("/wx_login", s.handlePCLogin)
 		api.Post("/wx_login", s.handlePCLogin)
 	})
 
 	return r
 }
 
+func (s *Server) limitInflight(next http.Handler) http.Handler {
+	if s.inflight == nil {
+		return next
+	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/healthz", "/readyz":
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		select {
+		case s.inflight <- struct{}{}:
+			defer func() { <-s.inflight }()
+			next.ServeHTTP(w, r)
+		default:
+			s.respondError(w, http.StatusServiceUnavailable, "系统繁忙，请稍后重试")
+		}
+	})
+}
+
 func (s *Server) cors(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, token")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, token")
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -263,6 +358,11 @@ func (s *Server) optionalAuth(next http.Handler) http.Handler {
 			return []byte(s.cfg.JWTSecret), nil
 		})
 		if err == nil && parsed.Valid && claims.UserID > 0 {
+			state, stateErr := s.loadAccountAccessState(r.Context(), claims.UserID)
+			if stateErr == nil && strings.EqualFold(state.AccountStatus, "banned") {
+				s.respondUserBanned(w, state)
+				return
+			}
 			r = r.WithContext(context.WithValue(r.Context(), userContextKey, claims.UserID))
 		}
 		next.ServeHTTP(w, r)
@@ -297,7 +397,7 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleLegacyStorage(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, filepath.Join(s.cfg.AssetsDir, "post-cover.svg"))
+	http.ServeFile(w, r, filepath.Join(s.cfg.AssetsDir, "illustrations", "social-media-rafiki.png"))
 }
 
 func (s *Server) respond(w http.ResponseWriter, data any, message string) {
@@ -314,8 +414,43 @@ func (s *Server) respondWithCode(w http.ResponseWriter, code int, status bool, m
 		Code:    code,
 		Status:  status,
 		Message: message,
-		Data:    data,
+		Data:    normalizeResponseData(data),
 	})
+}
+
+func normalizeResponseData(data any) any {
+	return normalizeJSONValue(reflect.ValueOf(data))
+}
+
+func normalizeJSONValue(value reflect.Value) any {
+	if !value.IsValid() {
+		return nil
+	}
+
+	switch value.Kind() {
+	case reflect.Interface, reflect.Pointer:
+		if value.IsNil() {
+			return nil
+		}
+		return normalizeJSONValue(value.Elem())
+	case reflect.Map:
+		if value.IsNil() {
+			return nil
+		}
+		normalized := make(map[string]any, value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			normalized[fmt.Sprint(iter.Key().Interface())] = normalizeJSONValue(iter.Value())
+		}
+		return normalized
+	case reflect.Slice:
+		if value.IsNil() {
+			return []any{}
+		}
+		return value.Interface()
+	default:
+		return value.Interface()
+	}
 }
 
 func (s *Server) unauthorized(w http.ResponseWriter) {
@@ -337,6 +472,10 @@ func (s *Server) requireUserID(w http.ResponseWriter, r *http.Request) (int64, b
 		s.unauthorized(w)
 		return 0, false
 	}
+	if state, err := s.loadAccountAccessState(r.Context(), uid); err == nil && strings.EqualFold(state.AccountStatus, "banned") {
+		s.respondUserBanned(w, state)
+		return 0, false
+	}
 	return uid, true
 }
 
@@ -353,6 +492,61 @@ func (s *Server) signToken(userID int64) (string, error) {
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.cfg.JWTSecret))
+}
+
+func (s *Server) signAdminToken(username string) (string, error) {
+	now := time.Now()
+	claims := adminClaims{
+		Username: username,
+		Role:     "admin",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.cfg.AdminTokenTTL)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ID:        uuid.NewString(),
+			Issuer:    "infinilink-admin",
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(s.cfg.JWTSecret))
+}
+
+func (s *Server) requireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := strings.TrimSpace(r.Header.Get("Authorization"))
+		if strings.HasPrefix(strings.ToLower(tokenString), "bearer ") {
+			tokenString = strings.TrimSpace(tokenString[7:])
+		}
+		if tokenString == "" {
+			tokenString = strings.TrimSpace(r.Header.Get("token"))
+		}
+		if tokenString == "" {
+			s.respondError(w, http.StatusUnauthorized, "管理员未登录")
+			return
+		}
+
+		claims := &adminClaims{}
+		parsed, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("unexpected signing method")
+			}
+			return []byte(s.cfg.JWTSecret), nil
+		})
+		if err != nil || !parsed.Valid || claims.Role != "admin" || strings.TrimSpace(claims.Username) == "" {
+			s.respondError(w, http.StatusUnauthorized, "管理员身份无效")
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), adminContextKey, claims.Username)))
+	})
+}
+
+func (s *Server) currentAdmin(r *http.Request) string {
+	value := r.Context().Value(adminContextKey)
+	if value == nil {
+		return ""
+	}
+	admin, _ := value.(string)
+	return admin
 }
 
 func (s *Server) decodeJSON(r *http.Request, dst any) error {

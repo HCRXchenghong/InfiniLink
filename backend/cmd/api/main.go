@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/HCRXchenghong/InfiniLink/backend/internal/config"
 	"github.com/HCRXchenghong/InfiniLink/backend/internal/server"
@@ -25,7 +24,7 @@ func main() {
 	httpServer := &http.Server{
 		Addr:              cfg.HTTPAddr,
 		Handler:           srv.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: cfg.HTTPReadHeaderTimeout,
 		ReadTimeout:       cfg.HTTPReadTimeout,
 		WriteTimeout:      cfg.HTTPWriteTimeout,
 		IdleTimeout:       cfg.HTTPIdleTimeout,

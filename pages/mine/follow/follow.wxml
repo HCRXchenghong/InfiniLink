@@ -21,7 +21,7 @@
         line="{{false}}" color="#949494" />
     </view>
     <view class="empty-view" wx:if="{{userList.length <= 0}}">
-      <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Astronaut-cuate.png" title="空" />
+      <empty-view icon="/backend/static/illustrations/world-rafiki.png" title="空" />
     </view>
   </block>
 </view>

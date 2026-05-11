@@ -27,7 +27,7 @@ const options = {
    */
   onLoad: function (options) {
     this.setData({
-      focus: options.focus
+      focus: options.focus === '1' || options.focus === 1 || options.focus === true
     })
     this.plateList();
     this.circleByplateid(-1);

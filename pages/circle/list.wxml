@@ -59,9 +59,9 @@
             <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
               rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
               <template is="circle"
-                data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+                data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,feedAdCard}}" />
               <empty-view wx:if="{{isNul}}" class="empty-view"
-                icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空" />
+                icon="/backend/static/illustrations/no-data-cuate.png" title="空" />
             </l-skeleton>
             <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text=""
               size="28" color="#949494" />

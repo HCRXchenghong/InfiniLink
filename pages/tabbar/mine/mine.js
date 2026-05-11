@@ -2,6 +2,7 @@ const mixins = require('../../../mixins/user')
 const common = require('../../../mixins/common')
 const pay = require('../../../mixins/pay')
 var app = getApp();
+
 const options = {
 
   /**
@@ -40,12 +41,38 @@ const options = {
     topicload: true,
     imageShow: false,
     configData: {},
+    userInfo: {
+      user_name: '',
+      user_avatar: '',
+      user_background_maps: '',
+      user_introduce: '',
+      is_official: 0,
+      is_authentication: 0,
+      is_member: 0,
+      membership_active: 0,
+      membership_tier: '',
+      membership_expire_text: '',
+      follow_count: 0,
+      follow_user_count: 0,
+      like_count: 0,
+      level_no: 1,
+      level_label: 'LV1',
+    },
     isOnShow: false,
+    scrollTop: 0,
+    customBar: 0,
     // 文章组件参数
     focus: false,
     isCommentPage: false,
     inputValue: '',
-    imageValue: '',
+    imageValue: ''
+  },
+
+  syncMineUserState(userInfo) {
+    const nextUserInfo = userInfo && typeof userInfo === 'object' ? userInfo : this.data.userInfo;
+    this.setData({
+      userInfo: nextUserInfo
+    })
   },
 
   onPageScroll: function onPageScroll(e) {
@@ -96,14 +123,14 @@ const options = {
   onLoad: function (options) {
     let that = this;
     that.setData({
-      customBar: app.globalData.CustomBar
+      customBar: Number(app.globalData.CustomBar || 0)
     });
     that.configData();
+    that.loadOperationAd('feed_stream');
     if (!that.data.isOnShow) {
       let userInfo = wx.getStorageSync('userInfo')
       if (userInfo) {
         that.setData({
-          userInfo: userInfo,
           posts: [],
           myPostsList: [],
           myLikePostsList: [],
@@ -114,6 +141,12 @@ const options = {
           isLastPage: false,
           isOnShow: false,
         })
+        that.syncMineUserState(userInfo);
+        that.updateUserInfo().then(function (nextUserInfo) {
+          if (nextUserInfo) {
+            that.syncMineUserState(nextUserInfo);
+          }
+        });
         that.userTotalPost();
         that.userPosts(that.data.currentItem, that.data.myPostsPage);
       } else {
@@ -190,16 +223,27 @@ const options = {
       selected: 4
     })
     let that = this;
+    let cachedUserInfo = wx.getStorageSync('userInfo')
+    if (cachedUserInfo) {
+      that.syncMineUserState(cachedUserInfo);
+      that.updateUserInfo().then(function (nextUserInfo) {
+        if (nextUserInfo) {
+          that.syncMineUserState(nextUserInfo);
+        }
+      });
+    }
     that.getSysMessageCount().then(function (res) {
-      that.getTabBar().setData({
-        sysMessageCount: res
-      })
+      const tabBar = typeof that.getTabBar === 'function' ? that.getTabBar() : null;
+      if (tabBar) {
+        tabBar.setData({
+          sysMessageCount: res
+        })
+      }
     })
     if (that.data.isOnShow) {
       let userInfo = wx.getStorageSync('userInfo')
       if (userInfo) {
         that.setData({
-          userInfo: userInfo,
           posts: [],
           myPostsList: [],
           myLikePostsList: [],
@@ -211,6 +255,12 @@ const options = {
           isNul: false,
           isOnShow: false,
         })
+        that.syncMineUserState(userInfo);
+        that.updateUserInfo().then(function (nextUserInfo) {
+          if (nextUserInfo) {
+            that.syncMineUserState(nextUserInfo);
+          }
+        });
         that.userTotalPost();
         that.userPosts(that.data.currentItem, that.data.myPostsPage);
       } else {
@@ -240,12 +290,17 @@ const options = {
     })
   },
 
+  openLevelDetail() {
+    wx.navigateTo({
+      url: '/pages/mine/level/level',
+    })
+  },
+
   /**
    * 页面相关事件处理函数--监听用户下拉动作
    */
   onPullDownRefresh: function () {
     let that = this;
-    that.updateUserInfo();
     that.setData({
       posts: [],
       myPostsList: [],
@@ -257,13 +312,13 @@ const options = {
       isLastPage: false,
       isNul: false,
     })
+    that.updateUserInfo().then(function (nextUserInfo) {
+      if (nextUserInfo) {
+        that.syncMineUserState(nextUserInfo);
+      }
+    });
     that.userPosts(that.data.currentItem, 1);
     that.userTotalPost();
-    setTimeout(function () {
-      that.setData({
-        userInfo: wx.getStorageSync('userInfo')
-      })
-    }, 500)
     if (that.data.isPullDownRefresh) {
       wx.hideNavigationBarLoading();
       wx.stopPullDownRefresh();
@@ -299,13 +354,13 @@ const options = {
   onShareAppMessage: function (res) {
     if (res && res.from == "button") {
       return {
-        title: "轻航",
+        title: "InfiniLink",
         path: '/pages/sticky/sticky?id=' + this.data.postsId,
         imageUrl: '',
       }
     } else {
       return {
-        title: "轻航",
+        title: "InfiniLink",
         path: '/pages/tabbar/mine/mine',
         imageUrl: '',
       }

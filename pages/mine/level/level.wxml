@@ -1,0 +1,90 @@
+<view class="page">
+  <view class="hero-card" style="{{hero.heroCardStyle || ''}}">
+    <view class="hero-head">
+      <view class="hero-main">
+        <view class="hero-badge" style="{{hero.badgeStyle || ''}}">{{hero.levelLabel}}</view>
+        <view class="hero-rank">{{hero.levelName}}</view>
+        <view class="hero-score">成长值 {{hero.score}}</view>
+      </view>
+      <view class="hero-member hero-member-{{hero.membershipTone}}">{{hero.membershipText}}</view>
+    </view>
+    <view class="hero-title">{{hero.summary}}</view>
+    <view class="hero-subtitle">{{hero.levelTagline}}</view>
+    <view class="hero-meta">
+      <text>{{hero.progressText}}</text>
+      <text>{{hero.progressPercentText}}</text>
+    </view>
+    <view class="progress-track">
+      <view class="progress-fill" style="{{hero.progressFillStyle || ''}}"></view>
+    </view>
+    <view class="hero-chip-row">
+      <view class="hero-chip" style="{{hero.chipStyle || ''}}">当前 {{hero.levelLabel}} {{hero.levelName}}</view>
+      <view class="hero-chip" style="{{hero.chipStyle || ''}}">下一等级 {{hero.nextLabel}} {{hero.nextName}}</view>
+      <view class="hero-chip" style="{{hero.chipStyle || ''}}">{{hero.scoreToNextText}}</view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">升级概览</view>
+    <view class="overview-grid">
+      <view class="overview-card" wx:for="{{overviewCards}}" wx:key="label">
+        <view class="overview-label">{{item.label}}</view>
+        <view class="overview-value">{{item.value}}</view>
+        <view class="overview-note">{{item.note}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-head">
+      <view class="panel-title">等级序列</view>
+      <view class="panel-tip">LV1-LV10</view>
+    </view>
+    <scroll-view scrollX="{{true}}" showScrollbar="{{false}}" class="level-gallery-scroll">
+      <view class="level-gallery-row">
+        <view class="level-card" wx:for="{{levelGallery}}" wx:key="levelNo" style="{{item.cardStyle || ''}}">
+          <view class="level-card-top">
+            <view class="level-card-badge" style="{{item.badgeStyle || ''}}">{{item.levelLabel}}</view>
+            <view class="level-card-status level-card-status-{{item.statusTone}}">{{item.statusText}}</view>
+          </view>
+          <view class="level-card-title" style="{{item.titleStyle || ''}}">{{item.levelName}}</view>
+          <view class="level-card-aura">{{item.levelAura}}</view>
+          <view class="level-card-desc" style="{{item.descStyle || ''}}">{{item.levelSubtitle}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-title">成长来源</view>
+    <view class="metric-grid">
+      <view class="metric-card" wx:for="{{metricCards}}" wx:key="label">
+        <view class="metric-label">{{item.label}}</view>
+        <view class="metric-value">{{item.value}}</view>
+        <view class="metric-note">{{item.note}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="panel">
+    <view class="panel-head">
+      <view class="panel-title">成长说明</view>
+      <view class="panel-link" bindtap="goMembershipPage">会员详情</view>
+    </view>
+    <view class="tip-item" wx:for="{{tips}}" wx:key="title">
+      <view class="tip-index">0{{index + 1}}</view>
+      <view class="tip-content">
+        <view class="tip-title">{{item.title}}</view>
+        <view class="tip-desc">{{item.desc}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="action-card" bindtap="goMembershipPage">
+    <view class="action-copy">
+      <view class="action-title">{{membershipCta.title}}</view>
+      <view class="action-desc">{{membershipCta.desc}}</view>
+    </view>
+    <view class="action-button">{{membershipCta.buttonText}}</view>
+  </view>
+</view>

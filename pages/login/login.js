@@ -10,6 +10,7 @@ const options = {
     configData: {},
     video: false,
     btnState: false,
+    banInfo: null,
   },
 
   /**
@@ -17,6 +18,7 @@ const options = {
    */
   onLoad: function (options) {
     this.configData();
+    this.refreshBanInfo();
   },
 
   /**
@@ -24,9 +26,17 @@ const options = {
    */
   onShow: function () {
     let userInfo = wx.getStorageSync('userInfo');
+    this.refreshBanInfo();
     if (userInfo != '') {
       wx.navigateBack();
     };
+  },
+
+  refreshBanInfo: function () {
+    const banInfo = wx.getStorageSync('banInfo');
+    this.setData({
+      banInfo: banInfo && typeof banInfo === 'object' ? banInfo : null
+    });
   },
 
   /***
@@ -43,6 +53,7 @@ const options = {
       })
     }).catch((err) => {
       console.log(err)
+      this.refreshBanInfo();
       this.setData({
         btnState: false
       })

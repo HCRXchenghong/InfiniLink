@@ -44,10 +44,29 @@ services:
       - ./storage:/app/storage
       - ./static:/app/static
 
+  realtime:
+    build: ../realtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    expose:
+      - "8090"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8090/readyz >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
   nginx:
     image: nginx:1.27-alpine
     depends_on:
       backend:
+        condition: service_healthy
+      realtime:
         condition: service_healthy
     ports:
       - "80:80"

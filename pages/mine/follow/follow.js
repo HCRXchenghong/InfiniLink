@@ -22,7 +22,7 @@ const options = {
     this.setData({
       type: options.id
     })
-    let title = '轻航';
+    let title = 'InfiniLink';
     if (options.id == 0) {
       if (options.userid != '' && options.userid != undefined) {
         this.setData({

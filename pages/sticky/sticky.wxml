@@ -1,9 +1,24 @@
 <import src="/pages/template/circle.wxml" />
+<view bindtouchstart="onUserTouchActivity">
 <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
   rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
   <template is="circle"
-    data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+    data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,feedAdCard}}" />
 </l-skeleton>
+<view class="detail-ad-wrap" wx:if="{{detailAdCard}}">
+  <view class="adContainer adCard" bindtap="openOperationAd" data-ad="{{detailAdCard}}">
+    <image class="adCard-image" mode="aspectFill" src="{{detailAdCard.image_url}}"></image>
+    <view class="adCard-content">
+      <view class="adCard-top">
+        <view class="adCard-badge">详情广告</view>
+        <view class="adCard-button">{{detailAdCard.button_text}}</view>
+      </view>
+      <view class="adCard-title">{{detailAdCard.title}}</view>
+      <view class="adCard-subtitle" wx:if="{{detailAdCard.subtitle}}">{{detailAdCard.subtitle}}</view>
+    </view>
+  </view>
+</view>
 <!-- 生成海报组件 -->
 <poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
   bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>
+</view>

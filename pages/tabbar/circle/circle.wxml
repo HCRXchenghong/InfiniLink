@@ -1,4 +1,5 @@
 <wxs module="filters" src="../../../utils/fixed.wxs"></wxs>
+<view bindtouchstart="onUserTouchActivity">
 <navBar background="white" iconTheme="{{iconTheme}}" bindsearch="goToSearch" searchBar="{{true}}"
   searchText="{{hot_search}}">
 </navBar>
@@ -76,7 +77,7 @@
                     <text>{{item.user_circle_count}}圈友在讨论</text>
                   </view>
                 </view>
-                <view class="set-focus" data-id="{{item.clubId}}"
+                <view class="set-focus" data-id="{{item.id}}"
                   style="background: url({{item.head_portrait}}) center/cover no-repeat #f5f5f5;"
                   data-index="{{index}}">
                   <view class="circle-icon-box">
@@ -105,7 +106,7 @@
             </view>
           </block>
           <view class="empty-box" wx:else>
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Circles-rafiki.png" title="空">
+            <empty-view icon="/backend/static/illustrations/circles-rafiki.png" title="空">
             </empty-view>
             <view class="botn-box">
               <view class="setBtn" catchtap="setNewCircle">发现更多圈子
@@ -117,4 +118,5 @@
       </view>
     </l-sticky-item>
   </l-sticky>
+</view>
 </view>

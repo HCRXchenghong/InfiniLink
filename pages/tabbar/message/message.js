@@ -1,5 +1,6 @@
 const mixins = require('../../../mixins/message')
 const common = require('../../../mixins/common')
+const socket = require('../../../utils/socket')
 var app = getApp();
 const options = {
 
@@ -10,7 +11,7 @@ const options = {
     userInfo: {},
     page: 1,
     messageQHList: [{
-      img: "/image/qinghang-message.png",
+      img: "/image/infinilink-message.png",
       title: "系统通知",
       content: "",
       date: "",
@@ -32,6 +33,7 @@ const options = {
       url: "/pages/message/comment/comment"
     }],
     messageList: [],
+    customerServiceThread: null,
     close: false
   },
 
@@ -42,10 +44,71 @@ const options = {
 
   },
 
+  refreshRealtimeMessageState: function () {
+    let that = this;
+    that.getMessages();
+    that.getCustomerServiceProfile();
+    that.getUserChatList();
+    that.getSysMessageCount().then(function (res) {
+      if ("function" == typeof that.getTabBar && that.getTabBar()) {
+        that.getTabBar().setData({
+          sysMessageCount: res
+        })
+      }
+    })
+  },
+
+  bindRealtimeMessageEvents: function () {
+    if (this._realtimeBound) {
+      return;
+    }
+
+    let that = this;
+    that._handleRealtimeRefresh = function () {
+      const userInfo = wx.getStorageSync('userInfo')
+      if (!userInfo || !userInfo.id) {
+        return;
+      }
+      that.refreshRealtimeMessageState();
+    }
+
+    socket.on('open', that._handleRealtimeRefresh);
+    socket.on('chat.message', that._handleRealtimeRefresh);
+    socket.on('notification.refresh', that._handleRealtimeRefresh);
+    that._realtimeBound = true;
+    socket.connect().catch(function () {})
+  },
+
+  unbindRealtimeMessageEvents: function () {
+    if (!this._realtimeBound) {
+      return;
+    }
+    socket.off('open', this._handleRealtimeRefresh);
+    socket.off('chat.message', this._handleRealtimeRefresh);
+    socket.off('notification.refresh', this._handleRealtimeRefresh);
+    this._handleRealtimeRefresh = null;
+    this._realtimeBound = false;
+  },
+
   onMenuItem: function (e) {
     var url = e.currentTarget.dataset.url;
     wx.navigateTo({
       url: url,
+    })
+  },
+
+  openCustomerServiceChat: function () {
+    const thread = this.data.customerServiceThread;
+    const customer = thread && thread.user ? thread.user : null;
+    if (!customer || !customer.id) {
+      wx.showToast({
+        title: '客服暂不可用',
+        icon: 'none'
+      })
+      return;
+    }
+    wx.navigateTo({
+      url: '/pages/message/detail/detail?userid=' + customer.id + '&name=' + encodeURIComponent(customer.user_name || '官方客服'),
     })
   },
 
@@ -57,18 +120,13 @@ const options = {
       selected: 3
     })
     let that = this;
-    that.getSysMessageCount().then(function (res) {
-      that.getTabBar().setData({
-        sysMessageCount: res
-      })
-    })
     let userInfo = wx.getStorageSync('userInfo')
     if (userInfo) {
       that.setData({
         userInfo: userInfo
       })
-      that.getMessages();
-      that.getUserChatList();
+      that.refreshRealtimeMessageState();
+      that.bindRealtimeMessageEvents();
     } else {
       wx.navigateTo({
         url: '/pages/login/login',
@@ -80,9 +138,16 @@ const options = {
    * 页面相关事件处理函数--监听用户下拉动作
    */
   onPullDownRefresh: function () {
-    this.getMessages()
-    this.getUserChatList();
+    this.refreshRealtimeMessageState();
     wx.stopPullDownRefresh();
+  },
+
+  onHide: function () {
+    this.unbindRealtimeMessageEvents();
+  },
+
+  onUnload: function () {
+    this.unbindRealtimeMessageEvents();
   },
 }
 

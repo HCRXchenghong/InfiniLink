@@ -23,7 +23,9 @@ const options = {
     showloading: false,
     isLastPage: false,
     iconTheme: "black",
-    searchText: [],
+    searchText: [{
+      search_content: "点我搜索"
+    }],
     statusBarHeight: app.globalData.statusBarHeight,
     screenHeight: app.globalData.screenHeight,
     isOnShow: false,
@@ -81,9 +83,14 @@ const options = {
    */
   onLoad: function (options) {
     let that = this;
-    this.getTabBar().setData({
-      selected: 0
-    })
+    if (typeof this.getTabBar === 'function') {
+      const tabBar = this.getTabBar();
+      if (tabBar) {
+        tabBar.setData({
+          selected: 0
+        })
+      }
+    }
     if (!that.data.isOnShow) {
       that.setData({
         header: [{
@@ -99,6 +106,13 @@ const options = {
       })
       that.userPlate();
     }
+    that.loadOperationAd('feed_stream');
+    that.loadOperationAd('home_carousel', {
+      targetKey: 'carouselAds',
+      multiple: true,
+      resetIndexKey: 'carouselAdIndex'
+    });
+    that.maybeShowSplashAd('splash_screen');
     that.indexChoiceness();
     that.indexPosts();
   },
@@ -112,9 +126,12 @@ const options = {
     })
     let that = this;
     that.getSysMessageCount().then(function (res) {
-      that.getTabBar().setData({
-        sysMessageCount: res
-      })
+      const tabBar = typeof that.getTabBar === 'function' ? that.getTabBar() : null;
+      if (tabBar) {
+        tabBar.setData({
+          sysMessageCount: res
+        })
+      }
     })
     if (that.data.isOnShow) {
       that.setData({
@@ -196,8 +213,8 @@ const options = {
     }
   },
   //跳转PC端
-  toShuiXing() {
-    let link = 'https://qinghang.supengjun.com';
+  toInfiniLink() {
+    let link = 'https://github.com/HCRXchenghong/InfiniLink';
     wx.navigateTo({
       url: '/pages/web-view/index?url=' + link,
     })

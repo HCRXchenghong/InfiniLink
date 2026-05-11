@@ -32,6 +32,7 @@ const options = {
       name: options.name,
       id: options.id,
     })
+    this.loadOperationAd('feed_stream')
     this.tagePostsList()
   },
 

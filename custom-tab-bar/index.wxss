@@ -31,6 +31,12 @@
     position: relative;
 }
 
+.tab-bar-item-icon-wrap {
+    width: 48rpx;
+    height: 48rpx;
+    position: relative;
+}
+
 .tab-bar-item-view {
     font-size: 20rpx;
     line-height: 36rpx;

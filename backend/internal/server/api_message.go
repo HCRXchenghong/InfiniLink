@@ -112,7 +112,7 @@ func (s *Server) handleMessagesDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		list = append(list, map[string]any{
 			"id":         id,
-			"qh_image":   s.assetURL("message-icon.svg"),
+			"qh_image":   s.assetURL("illustrations/messaging-fun-rafiki.png"),
 			"title":      title,
 			"content":    content,
 			"created_at": formatListDatetime(createdAt),
@@ -131,7 +131,16 @@ func (s *Server) handleReadMessages(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		Type int `json:"type"`
 	}
-	if err := s.decodeJSON(r, &payload); err != nil {
+	if r.Method == http.MethodGet {
+		payload.Type = parseInt(r.URL.Query().Get("type"), 0)
+	} else if err := s.decodeJSON(r, &payload); err != nil {
+		s.respondError(w, 400, "参数不正确")
+		return
+	}
+	if payload.Type <= 0 {
+		payload.Type = parseInt(r.URL.Query().Get("type"), 0)
+	}
+	if payload.Type <= 0 {
 		s.respondError(w, 400, "参数不正确")
 		return
 	}
@@ -161,15 +170,33 @@ func (s *Server) handleAddChat(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	_, err := s.db.Exec(ctx, `
-		INSERT INTO chat_messages(sender_id, receiver_id, chat_content, chat_image, is_read)
-		VALUES ($1, $2, NULLIF($3, ''), NULLIF($4, ''), FALSE)
-	`, userID, payload.OID, limitString(payload.ChatContent, 1000), normalizeText(payload.ChatImage))
+
+	message, err := s.insertChatMessage(ctx, userID, payload.OID, payload.ChatContent, payload.ChatImage)
 	if err != nil {
 		s.respondError(w, 500, "发送消息失败")
 		return
 	}
-	s.respond(w, true, "发送成功")
+	s.publishChatMessage(ctx, userID, payload.OID, message)
+	s.respond(w, map[string]any{
+		"message": message,
+	}, "发送成功")
+}
+
+func (s *Server) handleCustomerServiceProfile(w http.ResponseWriter, r *http.Request) {
+	userID, ok := s.requireUserID(w, r)
+	if !ok {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	thread, err := s.buildCustomerServiceThread(ctx, userID)
+	if err != nil {
+		s.respondError(w, 500, "获取客服信息失败")
+		return
+	}
+	s.respond(w, thread, "ok")
 }
 
 func (s *Server) handleGetUserChat(w http.ResponseWriter, r *http.Request) {
@@ -255,6 +282,7 @@ func (s *Server) handleGetUserChatList(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
+	serviceUserID, _ := s.getCustomerServiceUserID(ctx)
 	rows, err := s.db.Query(ctx, `
 		SELECT DISTINCT ON (partner.id)
 			partner.id,
@@ -295,11 +323,12 @@ func (s *Server) handleGetUserChatList(w http.ResponseWriter, r *http.Request) {
 				"user_name":   name,
 				"user_avatar": pickString(avatar, s.assetURL("avatar-default.svg")),
 			},
-			"datetime":     formatListDatetime(createdAt),
-			"chat_content": nullableString(content),
-			"chat_image":   nullableString(image),
-			"read":         nil,
-			"read_count":   unread,
+			"datetime":            formatListDatetime(createdAt),
+			"chat_content":        nullableString(content),
+			"chat_image":          nullableString(image),
+			"read":                nil,
+			"read_count":          unread,
+			"is_customer_service": boolToInt(otherID == serviceUserID),
 		})
 	}
 	s.respond(w, list, "ok")
@@ -313,7 +342,16 @@ func (s *Server) handleReadUserChat(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		OID int64 `json:"oid"`
 	}
-	if err := s.decodeJSON(r, &payload); err != nil || payload.OID <= 0 {
+	if r.Method == http.MethodGet {
+		payload.OID = parseInt64(r.URL.Query().Get("oid"), 0)
+	} else if err := s.decodeJSON(r, &payload); err != nil {
+		s.respondError(w, 400, "参数不正确")
+		return
+	}
+	if payload.OID <= 0 {
+		payload.OID = parseInt64(r.URL.Query().Get("oid"), 0)
+	}
+	if payload.OID <= 0 {
 		s.respondError(w, 400, "参数不正确")
 		return
 	}
@@ -358,6 +396,14 @@ func (s *Server) handleDeleteMessageThread(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	targetID := parseInt64(r.URL.Query().Get("userid"), 0)
+	if targetID <= 0 && r.Method != http.MethodGet {
+		var payload struct {
+			UserID int64 `json:"userid"`
+		}
+		if err := s.decodeJSON(r, &payload); err == nil {
+			targetID = payload.UserID
+		}
+	}
 	if targetID <= 0 {
 		s.respondError(w, 400, "参数不正确")
 		return

@@ -2,9 +2,16 @@
  * 获取系统信息
  */
 class SystemInfo {
+  static getCompatSystemInfo() {
+    const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {}
+    const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {}
+    const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {}
+    return Object.assign({}, appBaseInfo, deviceInfo, windowInfo)
+  }
+
   static fetchAllInfo() {
     const menuButton = wx.getMenuButtonBoundingClientRect()
-    const systemInfo = wx.getSystemInfoSync()
+    const systemInfo = this.getCompatSystemInfo()
     const statusBarHeight = systemInfo.statusBarHeight
     const headerHeight = (menuButton.top - systemInfo.statusBarHeight) * 2 + menuButton.height
     let data = {

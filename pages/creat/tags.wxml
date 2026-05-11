@@ -19,7 +19,7 @@
     </view>
     <view class="noData" wx:if="{{!isNull}}">
         <image class="noData-img" mode="aspectFill"
-            src="http://127.0.0.1/storage/wxprogram/image/Social%20media-rafiki.png"></image>
+            src="/backend/static/illustrations/social-media-rafiki.png"></image>
         <view class="noDataTxt">空</view>
     </view>
 </view>

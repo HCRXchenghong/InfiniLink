@@ -1,4 +1,5 @@
 @import "/pages/template/circle.wxss";
+@import "/styles/level.wxss";
 
 .user-background {
   position: absolute;
@@ -65,6 +66,50 @@
   width: 32rpx;
   height: 32rpx;
   margin-left: 12rpx;
+}
+
+.membership-badge {
+  min-width: 70rpx;
+  height: 34rpx;
+  padding: 0 12rpx;
+  margin-left: 12rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18rpx;
+  line-height: 34rpx;
+  font-weight: 700;
+  box-sizing: border-box;
+}
+
+.membership-badge-pro {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: #fff4bf;
+}
+
+.membership-badge-max {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.level-badge {
+  min-width: 72rpx;
+  height: 34rpx;
+  padding: 0 12rpx;
+  margin-left: 12rpx;
+  border-radius: 999rpx;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  color: #ffffff;
+  font-size: 18rpx;
+  font-weight: 700;
+  box-sizing: border-box;
 }
 
 .header-abstract {

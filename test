@@ -1,0 +1,658 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, Users, ShieldCheck, FileText, 
+  MessageSquare, AlertTriangle, Bell, CreditCard, 
+  Wallet, HelpCircle, Settings, Sliders, Activity, 
+  LogOut, Search, Filter, ChevronDown, Check, X, 
+  MoreVertical, Eye, Lock, Unlock, Shield, Trash2,
+  RefreshCw, Download, Database, Server, Cpu
+} from 'lucide-react';
+
+// --- 全局配色规范 ---
+const COLORS = {
+  primary: '#2563EB',
+  success: '#16A34A',
+  warning: '#F59E0B',
+  danger: '#DC2626',
+  textMain: '#111827',
+  textSec: '#6B7280',
+  border: '#E5E7EB',
+  bg: '#F5F7FA',
+  panel: '#FFFFFF',
+};
+
+// --- Mock 数据准备 ---
+const MOCK_METRICS = {
+  onlineUsers: 48512,
+  qps: 12450,
+  redisHitRate: 98.7,
+  dbConnections: 850,
+  auditQueue: 1205,
+  errorRate: 0.02
+};
+
+const MOCK_USERS = Array.from({ length: 15 }).map((_, i) => ({
+  id: `1000${i}`,
+  nickname: `InfiniUser_${Math.floor(Math.random() * 1000)}`,
+  phone: `138${Math.floor(Math.random() * 100000000).toString().padStart(8, '0')}`,
+  status: i % 7 === 0 ? 'banned' : i % 5 === 0 ? 'muted' : 'active',
+  isVip: i % 3 === 0,
+  regDate: '2023-10-24 14:30:00',
+  posts: Math.floor(Math.random() * 50),
+  fans: Math.floor(Math.random() * 1000)
+}));
+
+// --- 通用 UI 组件 ---
+const Card = ({ children, className = '', title, extra }) => (
+  <div className={`bg-white rounded-lg border border-[#E5E7EB] shadow-sm ${className}`}>
+    {(title || extra) && (
+      <div className="px-6 py-4 border-b border-[#E5E7EB] flex justify-between items-center">
+        {title && <h3 className="font-semibold text-[#111827]">{title}</h3>}
+        {extra && <div>{extra}</div>}
+      </div>
+    )}
+    <div className="p-6">{children}</div>
+  </div>
+);
+
+const Button = ({ children, variant = 'primary', size = 'md', className = '', icon: Icon, onClick }) => {
+  const baseStyle = "inline-flex items-center justify-center rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2";
+  const sizeStyle = size === 'sm' ? "px-3 py-1.5 text-sm" : size === 'lg' ? "px-6 py-3 text-lg" : "px-4 py-2 text-sm";
+  const variants = {
+    primary: "bg-[#2563EB] text-white hover:bg-blue-700 focus:ring-blue-500",
+    secondary: "bg-white text-[#374151] border border-[#D1D5DB] hover:bg-gray-50 focus:ring-gray-500",
+    danger: "bg-[#DC2626] text-white hover:bg-red-700 focus:ring-red-500",
+    success: "bg-[#16A34A] text-white hover:bg-green-700 focus:ring-green-500",
+    ghost: "text-[#6B7280] hover:text-[#111827] hover:bg-gray-100"
+  };
+
+  return (
+    <button onClick={onClick} className={`${baseStyle} ${sizeStyle} ${variants[variant]} ${className}`}>
+      {Icon && <Icon className={`w-4 h-4 ${children ? 'mr-2' : ''}`} />}
+      {children}
+    </button>
+  );
+};
+
+const Badge = ({ type, text }) => {
+  const styles = {
+    success: "bg-green-100 text-[#16A34A] border-green-200",
+    warning: "bg-yellow-100 text-[#F59E0B] border-yellow-200",
+    danger: "bg-red-100 text-[#DC2626] border-red-200",
+    info: "bg-blue-100 text-[#2563EB] border-blue-200",
+    default: "bg-gray-100 text-[#6B7280] border-gray-200"
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${styles[type] || styles.default}`}>
+      {text}
+    </span>
+  );
+};
+
+const Modal = ({ isOpen, title, children, onClose, onConfirm, confirmText = "确认", confirmVariant = "primary" }) => {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#E5E7EB] flex justify-between items-center bg-gray-50">
+          <h3 className="font-semibold text-[#111827]">{title}</h3>
+          <button onClick={onClose} className="text-[#6B7280] hover:text-[#111827]"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 text-[#374151]">{children}</div>
+        <div className="px-6 py-4 border-t border-[#E5E7EB] bg-gray-50 flex justify-end space-x-3">
+          <Button variant="secondary" onClick={onClose}>取消</Button>
+          <Button variant={confirmVariant} onClick={onConfirm}>{confirmText}</Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- 核心业务视图组件 ---
+
+// 1. 总览仪表盘 (侧重 5万并发指标)
+const DashboardView = () => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <h1 className="text-2xl font-bold text-[#111827]">大盘总览 (Real-time)</h1>
+      <div className="flex space-x-2">
+        <Button variant="secondary" icon={RefreshCw}>刷新数据</Button>
+        <Button variant="primary" icon={Download}>导出大盘报告</Button>
+      </div>
+    </div>
+
+    {/* 核心并发指标 */}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {[
+        { title: "实时在线人数", value: "48,512", trend: "+2.4%", status: "success", icon: Users },
+        { title: "峰值 QPS", value: "12,450", trend: "平稳", status: "warning", icon: Activity },
+        { title: "Redis 命中率", value: "98.7%", trend: "-0.1%", status: "success", icon: Database },
+        { title: "接口 99线 (ms)", value: "124", trend: "-5ms", status: "success", icon: Server },
+        { title: "审核队列积压", value: "1,205", trend: "+400", status: "danger", icon: AlertTriangle },
+        { title: "全局错误率", value: "0.02%", trend: "平稳", status: "success", icon: Shield }
+      ].map((kpi, i) => (
+        <Card key={i} className="p-4">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-sm text-[#6B7280] font-medium">{kpi.title}</p>
+              <h4 className="text-2xl font-bold text-[#111827] mt-2">{kpi.value}</h4>
+            </div>
+            <div className={`p-2 rounded-lg bg-${kpi.status === 'danger' ? 'red' : kpi.status === 'warning' ? 'yellow' : 'blue'}-50`}>
+              <kpi.icon className={`w-5 h-5 text-${kpi.status === 'danger' ? 'red-600' : kpi.status === 'warning' ? 'yellow-600' : 'blue-600'}`} />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center text-sm">
+            <span className={kpi.status === 'danger' ? 'text-[#DC2626]' : 'text-[#16A34A]'}>{kpi.trend}</span>
+            <span className="text-[#6B7280] ml-2">较前一小时</span>
+          </div>
+        </Card>
+      ))}
+    </div>
+
+    {/* 业务与技术监控组合面板 */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <Card title="业务转化漏斗 (日)" className="col-span-2">
+        <div className="h-64 flex flex-col justify-center items-center text-[#6B7280] border-2 border-dashed border-[#E5E7EB] rounded-lg">
+          <Activity className="w-8 h-8 mb-2 text-[#9CA3AF]" />
+          <p>数据可视化图表占位 (DAU -&gt; 发帖 -&gt; 打赏)</p>
+        </div>
+      </Card>
+      <Card title="系统高危操作台 (降级开关)">
+        <div className="space-y-4">
+          {[
+            { name: "动态流读缓存强升", state: true },
+            { name: "发帖接口限流 (5000/s)", state: false },
+            { name: "降级评论服务 (暂不可见)", state: false },
+            { name: "停用耗时复杂的排行榜", state: true },
+          ].map((toggle, i) => (
+            <div key={i} className="flex justify-between items-center p-3 bg-[#F5F7FA] rounded border border-[#E5E7EB]">
+              <span className="text-sm font-medium text-[#374151]">{toggle.name}</span>
+              <button className={`w-12 h-6 rounded-full transition-colors relative ${toggle.state ? 'bg-[#16A34A]' : 'bg-[#D1D5DB]'}`}>
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${toggle.state ? 'left-7' : 'left-1'}`}></span>
+              </button>
+            </div>
+          ))}
+          <Button variant="danger" className="w-full mt-4" icon={AlertTriangle}>触发全局系统熔断</Button>
+        </div>
+      </Card>
+    </div>
+  </div>
+);
+
+// 2. 用户管理视图 (复杂列表与操作)
+const UsersView = () => {
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', user: null });
+
+  const handleAction = (type, user) => {
+    setConfirmModal({ isOpen: true, type, user });
+  };
+
+  const executeAction = () => {
+    // API Call Placeholder
+    console.log(`Executing ${confirmModal.type} on user ${confirmModal.user?.id}`);
+    setConfirmModal({ isOpen: false, type: '', user: null });
+  };
+
+  return (
+    <div className="space-y-4 h-full flex flex-col">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-[#111827]">用户管理</h1>
+        <Button variant="primary" icon={Download}>导出筛选结果</Button>
+      </div>
+
+      {/* 复杂的筛选区 */}
+      <Card className="flex-shrink-0">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-[#6B7280] mb-1">搜索用户</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-[#9CA3AF]" />
+              <input type="text" placeholder="UID/手机号/昵称" className="w-full pl-9 pr-3 py-2 border border-[#E5E7EB] rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#6B7280] mb-1">账号状态</label>
+            <select className="w-full px-3 py-2 border border-[#E5E7EB] rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <option>全部状态</option>
+              <option>正常活跃</option>
+              <option>已被禁言</option>
+              <option>已被封禁</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-[#6B7280] mb-1">会员身份</label>
+            <select className="w-full px-3 py-2 border border-[#E5E7EB] rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+              <option>全部用户</option>
+              <option>PRO 会员</option>
+              <option>普通用户</option>
+            </select>
+          </div>
+          <div className="flex items-end space-x-2">
+            <Button variant="primary" className="flex-1">查询</Button>
+            <Button variant="secondary">重置</Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* 批量操作条 */}
+      {selectedUsers.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 px-4 py-3 rounded-lg flex justify-between items-center animate-fade-in">
+          <span className="text-sm text-blue-800 font-medium">已选择 {selectedUsers.length} 个用户</span>
+          <div className="space-x-2">
+            <Button variant="secondary" size="sm">批量发私信</Button>
+            <Button variant="secondary" size="sm">批量赠送会员</Button>
+            <Button variant="danger" size="sm">批量封禁</Button>
+          </div>
+        </div>
+      )}
+
+      {/* 数据表格 */}
+      <Card className="flex-1 overflow-hidden flex flex-col p-0">
+        <div className="overflow-x-auto flex-1">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-[#F5F7FA] text-[#6B7280] sticky top-0 z-10">
+              <tr>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB] w-10">
+                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                </th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB]">UID</th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB]">用户信息</th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB]">状态</th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB]">业务数据</th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB]">注册时间</th>
+                <th className="px-6 py-3 font-medium border-b border-[#E5E7EB] text-right">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#E5E7EB]">
+              {MOCK_USERS.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" 
+                           onChange={(e) => e.target.checked ? setSelectedUsers([...selectedUsers, user.id]) : setSelectedUsers(selectedUsers.filter(id => id !== user.id))} />
+                  </td>
+                  <td className="px-6 py-4 font-mono text-[#6B7280]">{user.id}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-3">
+                        {user.nickname.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-medium text-[#111827] flex items-center">
+                          {user.nickname}
+                          {user.isVip && <span className="ml-2 px-1.5 py-0.5 bg-yellow-100 text-yellow-800 text-[10px] rounded font-bold">PRO</span>}
+                        </div>
+                        <div className="text-xs text-[#6B7280]">{user.phone}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    {user.status === 'active' && <Badge type="success" text="正常" />}
+                    {user.status === 'muted' && <Badge type="warning" text="禁言中" />}
+                    {user.status === 'banned' && <Badge type="danger" text="已封禁" />}
+                  </td>
+                  <td className="px-6 py-4 text-[#6B7280]">
+                    <div>帖子: <span className="text-[#111827] font-medium">{user.posts}</span></div>
+                    <div>粉丝: <span className="text-[#111827] font-medium">{user.fans}</span></div>
+                  </td>
+                  <td className="px-6 py-4 text-[#6B7280]">{user.regDate}</td>
+                  <td className="px-6 py-4 text-right space-x-2">
+                    <Button variant="ghost" size="sm" icon={Eye} />
+                    {user.status === 'active' ? (
+                      <>
+                        <Button variant="ghost" size="sm" icon={Shield} onClick={() => handleAction('mute', user)} />
+                        <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" icon={Lock} onClick={() => handleAction('ban', user)} />
+                      </>
+                    ) : (
+                      <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700 hover:bg-green-50" icon={Unlock} onClick={() => handleAction('unban', user)} />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {/* 分页组件占位 */}
+        <div className="px-6 py-4 border-t border-[#E5E7EB] flex justify-between items-center bg-white">
+          <span className="text-sm text-[#6B7280]">共 1,245,670 条记录</span>
+          <div className="flex space-x-1">
+            <Button variant="secondary" size="sm" className="px-2">上一页</Button>
+            <Button variant="primary" size="sm" className="px-3">1</Button>
+            <Button variant="secondary" size="sm" className="px-3">2</Button>
+            <Button variant="secondary" size="sm" className="px-3">3</Button>
+            <span className="px-2 py-1 text-[#6B7280]">...</span>
+            <Button variant="secondary" size="sm" className="px-2">下一页</Button>
+          </div>
+        </div>
+      </Card>
+
+      {/* 危险操作二次确认弹窗 */}
+      <Modal 
+        isOpen={confirmModal.isOpen} 
+        title={confirmModal.type === 'ban' ? '封禁用户确认' : confirmModal.type === 'mute' ? '禁言用户确认' : '解除限制确认'}
+        onClose={() => setConfirmModal({ isOpen: false, type: '', user: null })}
+        onConfirm={executeAction}
+        confirmVariant={confirmModal.type === 'ban' ? 'danger' : 'primary'}
+        confirmText={confirmModal.type === 'ban' ? '确认封禁' : '确认执行'}
+      >
+        <div className="space-y-4">
+          <p>您即将对用户 <strong>{confirmModal.user?.nickname} (UID: {confirmModal.user?.id})</strong> 执行 <strong>{confirmModal.type === 'ban' ? '永久封禁' : '操作'}</strong>。</p>
+          {confirmModal.type === 'ban' && (
+            <div className="bg-red-50 text-red-700 p-3 rounded text-sm flex items-start">
+              <AlertTriangle className="w-5 h-5 mr-2 flex-shrink-0" />
+              该操作将强制用户下线，并隐藏其所有公开内容，此操作会被记入高危操作日志。
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-[#374151] mb-1">操作原因 (必填)</label>
+            <textarea className="w-full border border-[#E5E7EB] rounded p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" rows="3" placeholder="请输入操作原因，将留存备查..."></textarea>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+// 3. 运维与监控 (核心体现 5万并发的设计)
+const DevOpsView = () => (
+  <div className="space-y-6">
+    <div className="flex justify-between items-center">
+      <div>
+        <h1 className="text-2xl font-bold text-[#111827]">高可用与系统监控</h1>
+        <p className="text-sm text-[#6B7280] mt-1">集群节点状态、中间件健康度与熔断配置，保障 5 万并发水位线。</p>
+      </div>
+      <Button variant="secondary" icon={RefreshCw}>自动刷新 (5s)</Button>
+    </div>
+
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* 消息队列监控 */}
+      <Card title="异步任务与消息队列 (Kafka/RabbitMQ)">
+        <div className="space-y-4">
+          {[
+            { topic: 'content_audit_queue', consumer: 24, backlog: 1205, rate: '450/s', status: 'warning' },
+            { topic: 'push_notification_queue', consumer: 10, backlog: 0, rate: '120/s', status: 'success' },
+            { topic: 'payment_callback_retry', consumer: 2, backlog: 5, rate: '1/s', status: 'success' },
+            { topic: 'feed_timeline_fanout', consumer: 40, backlog: 15420, rate: '8500/s', status: 'danger' },
+          ].map((q, i) => (
+            <div key={i} className="flex flex-col p-3 border border-[#E5E7EB] rounded-lg bg-[#F9FAFB]">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-mono text-sm text-[#111827] font-bold">{q.topic}</span>
+                <Badge type={q.status} text={q.status === 'danger' ? '严重积压' : q.status === 'warning' ? '轻微积压' : '健康'} />
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs text-[#6B7280]">
+                <div>消费者节点: <span className="font-medium text-[#111827]">{q.consumer}</span></div>
+                <div>当前积压: <span className={`font-bold ${q.status === 'danger' ? 'text-red-600' : 'text-[#111827]'}`}>{q.backlog}</span></div>
+                <div>消费速率: <span className="font-medium text-[#111827]">{q.rate}</span></div>
+              </div>
+              {q.status === 'danger' && (
+                <div className="mt-3 flex space-x-2">
+                  <Button size="sm" variant="secondary">紧急扩容消费者 (K8s)</Button>
+                  <Button size="sm" variant="danger">清空死信队列</Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* 数据库与缓存池 */}
+      <div className="space-y-6">
+        <Card title="PostgreSQL 主从集群状态">
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-[#6B7280]">全局活跃连接数</span>
+              <span className="font-bold text-[#111827]">850 / 2000 (42%)</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '42%' }}></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#E5E7EB]">
+              <div>
+                <p className="text-xs text-[#6B7280]">主库 QPS (Write)</p>
+                <p className="text-lg font-bold text-[#111827]">1,240</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6B7280]">只读库 QPS (Read)</p>
+                <p className="text-lg font-bold text-[#111827]">11,210</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6B7280]">当前慢查询 ( &gt; 500ms)</p>
+                <p className="text-lg font-bold text-red-600">12 条</p>
+              </div>
+              <div>
+                <p className="text-xs text-[#6B7280]">主从延迟</p>
+                <p className="text-lg font-bold text-[#16A34A]">12 ms</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Redis 缓存集群">
+          <div className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-[#6B7280]">内存使用率 (16GB * 6)</span>
+              <span className="font-bold text-[#111827]">78%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '78%' }}></div>
+            </div>
+            <div className="flex justify-between items-center mt-2">
+              <div className="text-sm">
+                <span className="text-[#6B7280]">命中率: </span>
+                <span className="font-bold text-[#16A34A]">98.7%</span>
+              </div>
+              <Button size="sm" variant="secondary">查看热点 Key</Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  </div>
+);
+
+// 4. 空白占位视图 (为其他模块提供结构)
+const PlaceholderView = ({ title }) => (
+  <div className="flex flex-col items-center justify-center h-full text-[#6B7280]">
+    <Activity className="w-16 h-16 mb-4 text-[#D1D5DB]" />
+    <h2 className="text-xl font-medium text-[#374151]">{title} 模块</h2>
+    <p className="mt-2 text-sm">当前环境为 Demo 预览，完整功能已在路由架构中预留。</p>
+  </div>
+);
+
+
+// --- 主应用架构 ---
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  // --- 登录页面 ---
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+        <div className="sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="flex justify-center text-[#2563EB]">
+            <Activity className="w-12 h-12" />
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-[#111827]">
+            InfiniLink 管理控制台
+          </h2>
+          <p className="mt-2 text-center text-sm text-[#6B7280]">
+            5万并发内容社区运营后台
+          </p>
+        </div>
+
+        <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+          <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[#E5E7EB]">
+            <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); setIsLoggedIn(true); }}>
+              <div>
+                <label className="block text-sm font-medium text-[#374151]">管理员账号</label>
+                <div className="mt-1">
+                  <input required className="appearance-none block w-full px-3 py-2 border border-[#E5E7EB] rounded-md shadow-sm placeholder-[#9CA3AF] focus:outline-none focus:ring-[#2563EB] focus:border-[#2563EB] sm:text-sm" placeholder="admin" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#374151]">密码</label>
+                <div className="mt-1">
+                  <input type="password" required className="appearance-none block w-full px-3 py-2 border border-[#E5E7EB] rounded-md shadow-sm placeholder-[#9CA3AF] focus:outline-none focus:ring-[#2563EB] focus:border-[#2563EB] sm:text-sm" placeholder="••••••••" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input id="remember-me" name="remember-me" type="checkbox" className="h-4 w-4 text-[#2563EB] focus:ring-[#2563EB] border-[#E5E7EB] rounded" />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-[#374151]">记住我</label>
+                </div>
+                <div className="text-sm">
+                  <a href="#" className="font-medium text-[#2563EB] hover:text-blue-500">忘记密码?</a>
+                </div>
+              </div>
+              <div>
+                <Button variant="primary" className="w-full justify-center" size="lg">安全登录</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- 导航菜单配置 (完整覆盖需求中的 14 个模块) ---
+  const NAVIGATION = [
+    { section: '核心看板', items: [
+      { id: 'dashboard', label: '总览仪表盘', icon: LayoutDashboard },
+    ]},
+    { section: '用户与内容', items: [
+      { id: 'users', label: '用户管理', icon: Users },
+      { id: 'verification', label: '认证审核', icon: ShieldCheck },
+      { id: 'content', label: '内容管理', icon: FileText },
+      { id: 'circles', label: '圈子管理', icon: MessageSquare },
+    ]},
+    { section: '安全与客服', items: [
+      { id: 'risk', label: '举报与风控', icon: AlertTriangle },
+      { id: 'messages', label: '消息与客服', icon: Bell },
+      { id: 'tickets', label: '反馈与工单', icon: HelpCircle },
+    ]},
+    { section: '财务与配置', items: [
+      { id: 'orders', label: '订单会员支付', icon: CreditCard },
+      { id: 'revenue', label: '收益与提现', icon: Wallet },
+      { id: 'ops', label: '运营配置', icon: Sliders },
+      { id: 'sys', label: '系统配置', icon: Settings },
+    ]},
+    { section: '技术基建', items: [
+      { id: 'devops', label: '高可用监控', icon: Activity },
+      { id: 'auth', label: '权限管理', icon: Lock },
+    ]}
+  ];
+
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'dashboard': return <DashboardView />;
+      case 'users': return <UsersView />;
+      case 'devops': return <DevOpsView />;
+      default: return <PlaceholderView title={NAVIGATION.flatMap(s => s.items).find(i => i.id === currentView)?.label || currentView} />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F5F7FA] font-sans">
+      {/* 侧边栏 */}
+      <aside className={`bg-[#111827] text-white flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'} flex-shrink-0`}>
+        <div className="h-16 flex items-center justify-center border-b border-gray-800 px-4">
+          <Activity className="w-8 h-8 text-[#2563EB]" />
+          {isSidebarOpen && <span className="ml-3 font-bold text-xl tracking-wider">InfiniLink</span>}
+        </div>
+        
+        <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+          {NAVIGATION.map((group, idx) => (
+            <div key={idx} className="mb-6">
+              {isSidebarOpen && <div className="px-6 mb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">{group.section}</div>}
+              <ul>
+                {group.items.map(item => (
+                  <li key={item.id}>
+                    <button
+                      onClick={() => setCurrentView(item.id)}
+                      className={`w-full flex items-center px-6 py-2.5 text-sm transition-colors ${
+                        currentView === item.id 
+                          ? 'bg-[#2563EB] text-white border-r-4 border-blue-400' 
+                          : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                      }`}
+                      title={!isSidebarOpen ? item.label : undefined}
+                    >
+                      <item.icon className={`w-5 h-5 ${currentView === item.id ? 'text-white' : 'text-gray-400'}`} />
+                      {isSidebarOpen && <span className="ml-3">{item.label}</span>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        
+        {/* 底部用户信息 */}
+        <div className="p-4 border-t border-gray-800">
+          <div className="flex items-center">
+            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center font-bold">SA</div>
+            {isSidebarOpen && (
+              <div className="ml-3 flex-1 overflow-hidden">
+                <p className="text-sm font-medium truncate">超级管理员</p>
+                <p className="text-xs text-gray-400 truncate">System Admin</p>
+              </div>
+            )}
+            {isSidebarOpen && (
+              <button onClick={() => setIsLoggedIn(false)} className="text-gray-400 hover:text-white ml-auto">
+                <LogOut className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* 右侧主内容区 */}
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* 顶部 Header */}
+        <header className="h-16 bg-white border-b border-[#E5E7EB] flex items-center justify-between px-6 flex-shrink-0 z-10">
+          <div className="flex items-center">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-[#6B7280] hover:text-[#111827] focus:outline-none mr-4">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <nav className="flex text-sm font-medium text-[#6B7280]">
+              <span>工作台</span>
+              <span className="mx-2">/</span>
+              <span className="text-[#111827]">{NAVIGATION.flatMap(s => s.items).find(i => i.id === currentView)?.label}</span>
+            </nav>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {/* 系统状态探针指示器 */}
+            <div className="flex items-center text-sm px-3 py-1 bg-green-50 text-green-700 rounded-full border border-green-200">
+              <div className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></div>
+              系统全站健康
+            </div>
+            
+            <button className="text-[#6B7280] hover:text-[#111827] relative">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+            </button>
+          </div>
+        </header>
+
+        {/* 动态页面内容 */}
+        <div className="flex-1 overflow-auto p-6 relative">
+          <div className="max-w-[1600px] mx-auto h-full">
+            {renderCurrentView()}
+          </div>
+        </div>
+      </main>
+      
+      {/* 全局样式注入 (滚动条等) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4B5563; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+      `}} />
+    </div>
+  );
+}

@@ -1,8 +1,26 @@
-<view class="containers">
+<view class="containers" bindtouchstart="onUserTouchActivity">
     <view bindtap="creatForums" class="top-button-confirm">
         <image src="/image/add.png" />发布
     </view>
-    <textarea auto-height bindinput="onContentInput" bindblur="bCursor" class="content-text" maxlength="3000"
+    <view class="membership-post-entry membership-post-entry-{{membershipPostPrompt.tone}}" wx:if="{{membershipPostPrompt}}">
+        <view class="membership-entry-header">
+            <text class="membership-entry-badge">{{membershipPostPrompt.badge}}</text>
+            <text class="membership-entry-title">{{membershipPostPrompt.title}}</text>
+        </view>
+        <view class="membership-entry-desc">{{membershipPostPrompt.desc}}</view>
+        <view class="membership-entry-items">
+            <view class="membership-entry-item" wx:for="{{membershipPostPrompt.entries}}" wx:key="title"
+                wx:for-item="entry">
+                <text class="membership-entry-item-label">{{entry.title}}</text>
+                <text class="membership-entry-item-value">{{entry.value}}</text>
+            </view>
+        </view>
+        <view bindtap="onMembershipPostActionTap" class="membership-entry-action"
+            data-action="{{membershipPostPrompt.action}}" data-scene="{{membershipPostPrompt.scene}}">
+            {{membershipPostPrompt.buttonText}}
+        </view>
+    </view>
+    <textarea auto-height bindinput="onContentInput" bindfocus="onUserInputActivity" bindblur="bCursor" class="content-text" maxlength="3000"
         placeholder="想说你就多说点" placeholder-class="content-placeholder" value="{{textinput}}"></textarea>
 
     <view class="middle-mix">
@@ -85,12 +103,12 @@
         </view>
         <view class="link-input">
             <view>名称：</view>
-            <input placeholder="请输入链接显示名称" value="{{linkName}}" data-type="0" bindinput="onLinkInput" />
+            <input placeholder="请输入链接显示名称" value="{{linkName}}" data-type="0" bindfocus="onUserInputActivity" bindinput="onLinkInput" />
         </view>
         <view class="link-input">
             <view>链接：</view>
             <input placeholder="请输入链接地址（要带https://哦）" cursor="9" data-type="1" value="{{linkAdds}}"
-                bindinput="onLinkInput" />
+                bindfocus="onUserInputActivity" bindinput="onLinkInput" />
         </view>
         <view class="link-add-btn" bindtap="openAddLink">确认添加</view>
     </view>

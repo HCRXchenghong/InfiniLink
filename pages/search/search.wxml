@@ -37,7 +37,7 @@
       </view>
     </block>
     <block wx:else>
-      <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Search.gif"
+      <empty-view class="empty-view" icon="/backend/static/illustrations/outer-space-rafiki.png"
         title="空">
       </empty-view>
     </block>
@@ -59,7 +59,7 @@
       <l-skeleton loading="{{topicload}}" rows="3" avatar="{{true}}" avatar-size="80rpx" avatar-shape="circle"
         rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
         <template is="circle"
-          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,feedAdCard}}" />
       </l-skeleton>
       <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text=""
         size="28" color="#949494" />
@@ -110,7 +110,7 @@
     <l-loadmore show="{{loadmoreShow}}" type="{{isLastPage?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"
       color="#949494" />
   </block>
-  <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Search.gif" title="空"
+  <empty-view class="empty-view" icon="/backend/static/illustrations/outer-space-rafiki.png" title="空"
     wx:if="{{isNull}}">
   </empty-view>
 </view>

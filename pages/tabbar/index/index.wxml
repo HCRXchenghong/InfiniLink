@@ -1,7 +1,8 @@
 <import src="/pages/template/circle.wxml" />
+<view bindtouchstart="onUserTouchActivity">
 <navBar background="white" iconTheme="{{iconTheme}}" bindsearch="gotosearch" searchBar="{{true}}"
   searchText="{{searchText}}">
-  <view bindtap="toShuiXing" slot="left" class='lxy-nav-bar__logo'>
+  <view bindtap="toInfiniLink" slot="left" class='lxy-nav-bar__logo'>
     <image src="/image/logo-icon.png" />
   </view>
 </navBar>
@@ -19,6 +20,27 @@
 <view class="loading" style="margin-top:-15px;">
   <image mode="aspectFit" src="/image/load.gif"></image>
 </view>
+<view class="hero-carousel" wx:if="{{carouselAds.length > 0}}">
+  <swiper class="hero-carousel-swiper" circular autoplay="true" interval="5000" duration="400"
+    current="{{carouselAdIndex}}" bindchange="onOperationAdSwiperChange">
+    <swiper-item wx:for="{{carouselAds}}" wx:key="id">
+      <view class="hero-carousel-item" bindtap="openOperationAd" data-ad="{{item}}">
+        <image class="hero-carousel-image" mode="aspectFill" src="{{item.image_url}}"></image>
+        <view class="hero-carousel-mask"></view>
+        <view class="hero-carousel-copy">
+          <view class="hero-carousel-badge">广告</view>
+          <view class="hero-carousel-title">{{item.title}}</view>
+          <view class="hero-carousel-subtitle" wx:if="{{item.subtitle}}">{{item.subtitle}}</view>
+          <view class="hero-carousel-button">{{item.button_text}}</view>
+        </view>
+      </view>
+    </swiper-item>
+  </swiper>
+  <view class="hero-carousel-dots">
+    <view class="hero-carousel-dot {{index===carouselAdIndex?'hero-carousel-dot-active':''}}" wx:for="{{carouselAds}}"
+      wx:key="id"></view>
+  </view>
+</view>
 <view class="topping" wx:if="{{type==2}}">
   <view class="topping-article">
     <l-skeleton loading="{{stickyload}}" rows="2" title="{{false}}" rows-width="{{['690rpx','690rpx']}}"
@@ -27,7 +49,7 @@
         <view class="recommend" bindtap="more" data-id="{{item.id}}" data-index="{{index}}"
           style="background:url({{item.imagea.img_url}}) center/cover no-repeat #f5f5f5;" wx:if="{{index<6}}"
           wx:for="{{sticky}}" wx:key="index">
-          <rich-text class="recoTitle" nodes="#{{item.posts_content}}" />
+          <rich-text class="recoTitle" nodes="{{item.posts_content}}" />
           <view class="linearMask {{index==0||index==2?'lm_1':index==3||index==5?'lm_2':'lm_3'}}"></view>
         </view>
       </view>
@@ -40,15 +62,15 @@
       rows-height="{{['100rpx','240rpx','80rpx']}}" l-class="topic-skeleton">
       <block wx:if="{{posts.length > 0}}">
         <template is="circle"
-          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,ad}}" />
+          data="{{posts,rewardPopup,rewardDialog,rewardPrice,exceptionalCount,exceptionalList,showDialog,showComments,comments,commentCount,replyName,showTextarea,focus,isCommentPage,isCommentShow,inputValue,imageValue,showShare,bounced,popupshow,indexvideo,isCollect,isMyPosts,commentIsNull,feedAdCard}}" />
       </block>
       <view wx:else class="empty-box" style="height: {{screenHeight}}px;">
         <block wx:if="{{type==0}}">
-          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Astronaut.gif" title="干净清爽">
+          <empty-view icon="/backend/static/illustrations/no-data-cuate.png" title="干净清爽">
           </empty-view>
         </block>
         <block wx:else>
-          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空">
+          <empty-view icon="/backend/static/illustrations/no-data-cuate.png" title="空">
           </empty-view>
         </block>
       </view>
@@ -60,6 +82,22 @@
 <view bindtap="refreshEvent" class="refresh">
   <image src="/image/refresh-line.png" />
 </view>
+<view class="splash-ad-overlay" wx:if="{{showSplashAd && splashAdCard}}" bindtap="closeSplashAd">
+  <view class="splash-ad-skip" catchtap="closeSplashAd">跳过</view>
+  <view class="splash-ad-card-shell">
+    <view class="splash-ad-close" catchtap="closeSplashAd">×</view>
+    <view class="splash-ad-card" catchtap="openSplashOperationAd">
+      <image class="splash-ad-image" mode="aspectFill" src="{{splashAdCard.image_url}}"></image>
+      <view class="splash-ad-content">
+        <view class="splash-ad-badge">开屏广告</view>
+        <view class="splash-ad-title">{{splashAdCard.title}}</view>
+        <view class="splash-ad-subtitle" wx:if="{{splashAdCard.subtitle}}">{{splashAdCard.subtitle}}</view>
+        <view class="splash-ad-button">{{splashAdCard.button_text}}</view>
+      </view>
+    </view>
+  </view>
+</view>
 <!-- 生成海报组件 -->
 <poster id="poster" hide-loading="{{false}}" preload="{{false}}" config="{{posterConfig}}"
   bind:success="onPosterSuccess" bind:fail="onPosterFail"></poster>
+</view>

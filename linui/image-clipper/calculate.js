@@ -9,6 +9,13 @@
  * @param {*} currentY
  * @returns
  */
+function getCompatSystemInfo() {
+  const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+  const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+  const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+  return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
 export function determineDirection(cutX, cutY, clipWidth, clipHeight, currentX, currentY) {
   /*
    * (右下>>1 右上>>2 左上>>3 左下>>4)
@@ -126,7 +133,7 @@ export function calcImageSize(width, height, data) {
       imageHeight = (height / width) * imageWidth;
     }
   } else {
-    let sys = data._SYS_INFO || wx.getSystemInfoSync();
+    let sys = data._SYS_INFO || getCompatSystemInfo();
     imageWidth = sys.windowWidth;
     imageHeight = 0;
   }

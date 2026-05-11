@@ -15,7 +15,7 @@
     </block>
     <block wx:else>
         <empty-view class="empty-view"
-            icon="http://127.0.0.1/storage/wxprogram/image/Email%20campaign-cuate.png" title="空">
+            icon="/backend/static/illustrations/messaging-fun-rafiki.png" title="空">
         </empty-view>
     </block>
 </view>

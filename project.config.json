@@ -5,7 +5,7 @@
     "include": []
   },
   "setting": {
-    "urlCheck": true,
+    "urlCheck": false,
     "es6": false,
     "enhance": true,
     "postcss": true,
@@ -48,9 +48,9 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "2.17.3",
+  "libVersion": "3.15.1",
   "appid": "wx77cde032eaba142c",
-  "projectname": "%E8%BD%BB%E8%88%AA2.0",
+  "projectname": "InfiniLink",
   "isGameTourist": false,
   "simulatorType": "wechat",
   "simulatorPluginLibVersion": {},

@@ -78,7 +78,7 @@ func (s *Server) handleIndexBanner(w http.ResponseWriter, r *http.Request) {
 				"link":           nullableString(link),
 				"posts_id":       nullInt64(postsID),
 				"circle_id":      nullInt64(circleID),
-				"poster":         pickString(poster, s.assetURL("banner-default.svg")),
+				"poster":         pickString(poster, s.assetURL("illustrations/outer-space-rafiki.png")),
 			})
 		}
 		if len(banners) == 0 {
@@ -88,7 +88,7 @@ func (s *Server) handleIndexBanner(w http.ResponseWriter, r *http.Request) {
 					"link":           "https://github.com/HCRXchenghong/InfiniLink",
 					"posts_id":       0,
 					"circle_id":      0,
-					"poster":         s.assetURL("banner-default.svg"),
+					"poster":         s.assetURL("illustrations/outer-space-rafiki.png"),
 				},
 			}
 		}
@@ -417,10 +417,10 @@ func (s *Server) handleCircleByPlateID(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
 
-	query := `SELECT id FROM circles`
+	query := `SELECT id FROM circles WHERE audit_status = 1`
 	args := []any{}
 	if plateID > 0 {
-		query += ` WHERE plate_id = $1`
+		query += ` AND plate_id = $1`
 		args = append(args, plateID)
 	}
 	query += ` ORDER BY created_at DESC LIMIT 50`
@@ -430,19 +430,19 @@ func (s *Server) handleCircleByPlateID(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer rows.Close()
-	var circles []map[string]any
+	var circleIDs []int64
 	for rows.Next() {
 		var circleID int64
 		if err := rows.Scan(&circleID); err != nil {
 			s.respondError(w, 500, "读取圈子失败")
 			return
 		}
-		item, err := s.fetchCircleSummary(ctx, viewerID, circleID)
-		if err != nil {
-			s.respondError(w, 500, "整理圈子失败")
-			return
-		}
-		circles = append(circles, item)
+		circleIDs = append(circleIDs, circleID)
+	}
+	circles, err := s.buildCircles(ctx, viewerID, circleIDs)
+	if err != nil {
+		s.respondError(w, 500, "整理圈子失败")
+		return
 	}
 	s.respond(w, circles, "ok")
 }
@@ -476,36 +476,58 @@ func (s *Server) handleAddCircle(w http.ResponseWriter, r *http.Request) {
 
 	name := limitString(payload.CircleName, 40)
 	intro := limitString(payload.CircleIntroduce, 300)
+	matchedWords, err := s.evaluateSensitiveContent(ctx, name, intro)
+	if err != nil {
+		s.respondError(w, 500, "圈子风控校验失败")
+		return
+	}
+	rejectReason := buildModerationReason(matchedWords)
+	auditStatus := 1
+	if rejectReason != "" {
+		auditStatus = 2
+	}
 	head := normalizeText(payload.HeadPortrait)
 	if head == "" {
-		head = s.assetURL("circle-avatar.svg")
+		head = s.assetURL("illustrations/circles-rafiki.png")
 	}
 	background := normalizeText(payload.BackgroundMaps)
 	if background == "" {
-		background = s.assetURL("circle-cover.svg")
+		background = s.assetURL("illustrations/circles-rafiki.png")
 	}
 
 	if payload.ID > 0 {
 		_, err := s.db.Exec(ctx, `
 			UPDATE circles
-			SET circle_name = $2, circle_introduce = $3, head_portrait = $4, background_maps = $5, plate_id = $6, updated_at = NOW()
-			WHERE id = $1 AND user_id = $7
-		`, payload.ID, name, intro, head, background, payload.PlateID, userID)
+			SET circle_name = $2, circle_introduce = $3, head_portrait = $4, background_maps = $5, plate_id = $6, audit_status = $7, reject_msg = $8, updated_at = NOW()
+			WHERE id = $1 AND user_id = $9
+		`, payload.ID, name, intro, head, background, payload.PlateID, auditStatus, rejectReason, userID)
 		if err != nil {
 			s.respondError(w, 500, "更新圈子失败")
 			return
 		}
+		if rejectReason != "" {
+			s.notifyUserByCircleID(ctx, payload.ID, "圈子已被下架处理", "您发布的信息存在违规，已为您下架处理。", rejectReason)
+		}
 	} else {
-		_, err := s.db.Exec(ctx, `
-			INSERT INTO circles(user_id, plate_id, circle_name, circle_introduce, head_portrait, background_maps, audit_status)
-			VALUES ($1, $2, $3, $4, $5, $6, 1)
-		`, userID, payload.PlateID, name, intro, head, background)
+		var circleID int64
+		err := s.db.QueryRow(ctx, `
+			INSERT INTO circles(user_id, plate_id, circle_name, circle_introduce, head_portrait, background_maps, audit_status, reject_msg)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			RETURNING id
+		`, userID, payload.PlateID, name, intro, head, background, auditStatus, rejectReason).Scan(&circleID)
 		if err != nil {
 			s.respondError(w, 500, "创建圈子失败")
 			return
 		}
+		if rejectReason != "" {
+			s.notifyUserByCircleID(ctx, circleID, "圈子已被下架处理", "您发布的信息存在违规，已为您下架处理。", rejectReason)
+		}
 	}
-	s.respond(w, true, "提交成功")
+	s.respond(w, map[string]any{
+		"moderated":     rejectReason != "",
+		"matched_words": matchedWords,
+		"reason":        rejectReason,
+	}, "提交成功")
 }
 
 func (s *Server) handleCircleRecommend(w http.ResponseWriter, r *http.Request) {
@@ -523,6 +545,7 @@ func (s *Server) handleCircleRanking(w http.ResponseWriter, r *http.Request, lim
 	rows, err := s.db.Query(ctx, `
 		SELECT id
 		FROM circles
+		WHERE audit_status = 1
 		ORDER BY (
 			SELECT COUNT(*) FROM circle_follows cf WHERE cf.circle_id = circles.id
 		) DESC, created_at DESC
@@ -533,19 +556,19 @@ func (s *Server) handleCircleRanking(w http.ResponseWriter, r *http.Request, lim
 		return
 	}
 	defer rows.Close()
-	var list []map[string]any
+	var circleIDs []int64
 	for rows.Next() {
 		var circleID int64
 		if err := rows.Scan(&circleID); err != nil {
 			s.respondError(w, 500, "读取圈子排行失败")
 			return
 		}
-		circle, err := s.fetchCircleSummary(ctx, viewerID, circleID)
-		if err != nil {
-			s.respondError(w, 500, "整理圈子排行失败")
-			return
-		}
-		list = append(list, circle)
+		circleIDs = append(circleIDs, circleID)
+	}
+	list, err := s.buildCircles(ctx, viewerID, circleIDs)
+	if err != nil {
+		s.respondError(w, 500, "整理圈子排行失败")
+		return
 	}
 	s.respond(w, list, "ok")
 }
@@ -640,7 +663,7 @@ func (s *Server) handleUserFollowCircleList(w http.ResponseWriter, r *http.Reque
 		SELECT c.id, COUNT(*) OVER()
 		FROM circle_follows cf
 		JOIN circles c ON c.id = cf.circle_id
-		WHERE cf.user_id = $1
+		WHERE cf.user_id = $1 AND c.audit_status = 1
 		ORDER BY cf.created_at DESC
 		LIMIT $2 OFFSET $3
 	`, userID, defaultPageSize, offset(page, defaultPageSize))
@@ -650,8 +673,8 @@ func (s *Server) handleUserFollowCircleList(w http.ResponseWriter, r *http.Reque
 	}
 	defer rows.Close()
 	var (
-		circles []map[string]any
-		total   int64
+		circleIDs []int64
+		total     int64
 	)
 	for rows.Next() {
 		var (
@@ -663,12 +686,12 @@ func (s *Server) handleUserFollowCircleList(w http.ResponseWriter, r *http.Reque
 			return
 		}
 		total = count
-		item, err := s.fetchCircleSummary(ctx, userID, circleID)
-		if err != nil {
-			s.respondError(w, 500, "整理关注圈子失败")
-			return
-		}
-		circles = append(circles, item)
+		circleIDs = append(circleIDs, circleID)
+	}
+	circles, err := s.buildCircles(ctx, userID, circleIDs)
+	if err != nil {
+		s.respondError(w, 500, "整理关注圈子失败")
+		return
 	}
 	s.respond(w, s.buildPagination(page, total, circles), "ok")
 }
@@ -733,13 +756,25 @@ func (s *Server) handlePostAdd(w http.ResponseWriter, r *http.Request) {
 	tagIDs := parseTagIDs(payload.Tags)
 	imageURLs := parseImageURLs(payload.ImageURLs)
 	content := limitString(payload.PostsContent, 3000)
+	matchedWords, err := s.evaluateSensitiveContent(ctx, content)
+	if err != nil {
+		s.respondError(w, 500, "内容风控校验失败")
+		return
+	}
+	rejectReason := buildModerationReason(matchedWords)
+	auditStatus := 1
+	isDeleted := false
+	if rejectReason != "" {
+		auditStatus = 2
+		isDeleted = true
+	}
 	var postID int64
-	err := s.db.QueryRow(ctx, `
+	err = s.db.QueryRow(ctx, `
 		INSERT INTO posts(
-			user_id, circle_id, posts_content, address_json, video_url, video_thumb_url, video_height, video_width, audit_status
-		) VALUES ($1, $2, $3, NULLIF($4::text, '')::jsonb, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, 0), NULLIF($8, 0), 1)
+			user_id, circle_id, posts_content, address_json, video_url, video_thumb_url, video_height, video_width, audit_status, reject_msg, is_deleted
+		) VALUES ($1, $2, $3, NULLIF($4::text, '')::jsonb, NULLIF($5, ''), NULLIF($6, ''), NULLIF($7, 0), NULLIF($8, 0), $9, $10, $11)
 		RETURNING id
-	`, userID, payload.CircleID, content, string(payload.Address), normalizeText(payload.VideoURL), normalizeText(payload.VideoThumbURL), payload.VideoHeight, payload.VideoWidth).Scan(&postID)
+	`, userID, payload.CircleID, content, string(payload.Address), normalizeText(payload.VideoURL), normalizeText(payload.VideoThumbURL), payload.VideoHeight, payload.VideoWidth, auditStatus, rejectReason, isDeleted).Scan(&postID)
 	if err != nil {
 		s.respondError(w, 500, "发布动态失败")
 		return
@@ -761,7 +796,15 @@ func (s *Server) handlePostAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = s.refreshPostCounters(ctx, postID)
-	s.respond(w, map[string]any{"id": postID}, "发布成功")
+	if rejectReason != "" {
+		s.notifyUserByPostID(ctx, postID, "动态已被下架处理", "您发布的信息存在违规，已为您下架处理。", rejectReason)
+	}
+	s.respond(w, map[string]any{
+		"id":            postID,
+		"moderated":     rejectReason != "",
+		"matched_words": matchedWords,
+		"reason":        rejectReason,
+	}, "发布成功")
 }
 
 func (s *Server) handlePostLike(w http.ResponseWriter, r *http.Request) {
@@ -790,6 +833,8 @@ func (s *Server) handlePostLike(w http.ResponseWriter, r *http.Request) {
 		_, err = s.db.Exec(ctx, `INSERT INTO post_likes(user_id, post_id) VALUES ($1, $2)`, userID, payload.PostsID)
 		if err == nil {
 			s.createNotification(ctx, payload.PostsID, userID, 2, "收到新的点赞")
+			growth := s.growthRulesOrDefault(ctx)
+			_ = s.recordUserGrowthEvent(ctx, userID, "post_like", "post", payload.PostsID, growth.LikeScore, 0, 1, 0, true)
 		}
 	}
 	if err != nil {
@@ -1005,19 +1050,42 @@ func (s *Server) handleCommentAdd(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
 	defer cancel()
+	matchedWords, err := s.evaluateSensitiveContent(ctx, payload.CommentText)
+	if err != nil {
+		s.respondError(w, 500, "评论风控校验失败")
+		return
+	}
+	rejectReason := buildModerationReason(matchedWords)
+	auditStatus := 1
+	isDeleted := false
+	if rejectReason != "" {
+		auditStatus = 2
+		isDeleted = true
+	}
 	var commentID int64
-	err := s.db.QueryRow(ctx, `
-		INSERT INTO comments(post_id, user_id, comment_id, reply_user_id, comment_content, comment_img_url, audit_status)
-		VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), NULLIF($5, ''), NULLIF($6, ''), 1)
+	err = s.db.QueryRow(ctx, `
+		INSERT INTO comments(post_id, user_id, comment_id, reply_user_id, comment_content, comment_img_url, audit_status, is_deleted)
+		VALUES ($1, $2, NULLIF($3, 0), NULLIF($4, 0), NULLIF($5, ''), NULLIF($6, ''), $7, $8)
 		RETURNING id
-	`, payload.PostsID, userID, payload.CommentID, payload.ReplyUserID, limitString(payload.CommentText, 1000), normalizeText(payload.CommentImgURL)).Scan(&commentID)
+	`, payload.PostsID, userID, payload.CommentID, payload.ReplyUserID, limitString(payload.CommentText, 1000), normalizeText(payload.CommentImgURL), auditStatus, isDeleted).Scan(&commentID)
 	if err != nil {
 		s.respondError(w, 500, "评论失败")
 		return
 	}
-	_ = s.refreshPostCounters(ctx, payload.PostsID)
-	s.createNotification(ctx, payload.PostsID, userID, 3, "收到新的评论")
-	s.respond(w, map[string]any{"id": commentID}, "评论成功")
+	if rejectReason == "" {
+		_ = s.refreshPostCounters(ctx, payload.PostsID)
+		s.createNotification(ctx, payload.PostsID, userID, 3, "收到新的评论")
+		growth := s.growthRulesOrDefault(ctx)
+		_ = s.recordUserGrowthEvent(ctx, userID, "comment_publish", "comment", commentID, growth.CommentScore, 1, 0, 0, true)
+	} else {
+		s.createSystemNotification(ctx, userID, "评论已被下架处理", buildNotificationHTML("您发布的信息存在违规，已为您下架处理。", rejectReason), payload.PostsID)
+	}
+	s.respond(w, map[string]any{
+		"id":            commentID,
+		"moderated":     rejectReason != "",
+		"matched_words": matchedWords,
+		"reason":        rejectReason,
+	}, "评论成功")
 }
 
 func (s *Server) handleCommentsByPost(w http.ResponseWriter, r *http.Request) {
@@ -1061,6 +1129,10 @@ func (s *Server) handleCommentLike(w http.ResponseWriter, r *http.Request) {
 		_, err = s.db.Exec(ctx, `DELETE FROM comment_likes WHERE user_id = $1 AND comment_id = $2`, userID, payload.CommentID)
 	} else {
 		_, err = s.db.Exec(ctx, `INSERT INTO comment_likes(user_id, comment_id) VALUES ($1, $2)`, userID, payload.CommentID)
+		if err == nil {
+			growth := s.growthRulesOrDefault(ctx)
+			_ = s.recordUserGrowthEvent(ctx, userID, "comment_like", "comment", payload.CommentID, growth.LikeScore, 0, 1, 0, true)
+		}
 	}
 	if err != nil {
 		s.respondError(w, 500, "评论点赞失败")
@@ -1109,7 +1181,7 @@ func (s *Server) searchCircles(ctx context.Context, viewerID int64, keyword stri
 	rows, err := s.db.Query(ctx, `
 		SELECT id, COUNT(*) OVER()
 		FROM circles
-		WHERE ($1 = '%%' OR circle_name ILIKE $1 OR circle_introduce ILIKE $1)
+		WHERE audit_status = 1 AND ($1 = '%%' OR circle_name ILIKE $1 OR circle_introduce ILIKE $1)
 		ORDER BY created_at DESC
 		LIMIT $2 OFFSET $3
 	`, pattern, defaultPageSize, offset(page, defaultPageSize))
@@ -1118,8 +1190,8 @@ func (s *Server) searchCircles(ctx context.Context, viewerID int64, keyword stri
 	}
 	defer rows.Close()
 	var (
-		circles []map[string]any
-		total   int64
+		circleIDs []int64
+		total     int64
 	)
 	for rows.Next() {
 		var (
@@ -1130,11 +1202,11 @@ func (s *Server) searchCircles(ctx context.Context, viewerID int64, keyword stri
 			return nil, 0, err
 		}
 		total = count
-		item, err := s.fetchCircleSummary(ctx, viewerID, circleID)
-		if err != nil {
-			return nil, 0, err
-		}
-		circles = append(circles, item)
+		circleIDs = append(circleIDs, circleID)
+	}
+	circles, err := s.buildCircles(ctx, viewerID, circleIDs)
+	if err != nil {
+		return nil, 0, err
 	}
 	return circles, total, rows.Err()
 }
@@ -1194,5 +1266,10 @@ func (s *Server) createNotification(ctx context.Context, postID, actorUserID int
 	_, _ = s.db.Exec(ctx, `
 		INSERT INTO notifications(user_id, type, title, content, qh_image, posts_id, is_read)
 		VALUES ($1, $2, $3, $4, $5, $6, 0)
-	`, postOwnerID, notifType, title, content, s.assetURL("avatar-default.svg"), postID)
+	`, postOwnerID, notifType, title, content, s.assetURL("illustrations/messaging-fun-rafiki.png"), postID)
+	s.publishRealtimeEvent(ctx, "notification.refresh", []int64{postOwnerID}, nil, map[string]any{
+		"scope": "notifications",
+		"type":  notifType,
+		"title": title,
+	})
 }

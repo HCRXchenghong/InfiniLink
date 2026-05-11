@@ -12,7 +12,24 @@ const options = {
     color: "0,0,0",
     iconTheme: "white",
     userId: 0,
-    userInfo: {},
+    userInfo: {
+      user_name: '',
+      user_avatar: '',
+      user_background_maps: '',
+      user_introduce: '',
+      is_official: 0,
+      is_authentication: 0,
+      is_member: 0,
+      membership_active: 0,
+      membership_tier: '',
+      membership_expire_text: '',
+      isFollow: false,
+      followTotal: 0,
+      fansTotal: 0,
+      likeTotal: 0,
+      level_no: 1,
+      level_label: 'LV1',
+    },
     total: 0,
     page: 1,
     posts: [],
@@ -71,6 +88,7 @@ const options = {
     this.setData({
       userId: options.id
     })
+    this.loadOperationAd('feed_stream');
     this.getUserinfoById();
     this.userPostsById();
     this.configData();

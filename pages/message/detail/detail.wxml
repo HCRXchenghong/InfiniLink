@@ -1,3 +1,4 @@
+<view bindtouchstart="onUserTouchActivity">
 <view class="content-container">
   <view class="item-container" wx:for="{{messages}}" wx:key="index">
     <view class="item" style="flex-direction: {{item.object_id==oid?'row-reverse':'row'}}">
@@ -26,7 +27,7 @@
 
 <view catchtouchmove="stopTouch" class="jz-chat-edit-view-container">
   <view class="jz-chat-edit-view-box">
-    <input bindfocus="onInputFocus" bindinput="onInputChange" class="jz-chat-edit-view-input" cursorSpacing="16rpx"
+    <input bindfocus="onInputFocus" bindblur="onUserInputActivity" bindinput="onInputChange" class="jz-chat-edit-view-input" cursorSpacing="16rpx"
       maxlength="1000" value="{{chat_content}}"></input>
     <view class="jz-chat-edit-view-bottom-left" bindtap="toAddChatImage">
       <image class="jz-chat-edit-view-img" src="/image/image-line-add.png"></image>
@@ -35,4 +36,5 @@
       <text bindtap="toAddChat" class="jz-chat-edit-view-confirm">发送</text>
     </view>
   </view>
+</view>
 </view>

@@ -12,7 +12,10 @@
               <image wx:if="{{item.user.is_official == 1}}" class="header-label" src="/image/official.png" />
               <image wx:if="{{item.user.is_authentication == 1}}" class="header-label"
                 src="/image/authentication.png" />
-              <image wx:if="{{item.user.is_member == 1}}" class="header-label" src="/image/vip.png" />
+              <view class="level-pill {{item.user.level_theme_class || 'level-theme-1'}}">{{item.user.level_badge_text || item.user.level_label || 'LV1'}}</view>
+              <view wx:if="{{item.user.is_member == 1 && item.user.membership_tier == 'max'}}"
+                class="member-pill member-pill-max">MAX</view>
+              <view wx:elif="{{item.user.is_member == 1}}" class="member-pill member-pill-pro">PRO</view>
             </view>
           </view>
         </navigator>
@@ -51,8 +54,8 @@
               wx:for="{{item.images}}" wx:for-item="imgItem" wx:key="index" />
           </block>
         </view>
-        <view class="videomodel {{item.video.show_type == 0?'h-video':'w-video'}}"
-          wx:if="{{item.video!=null && item.video!=''}}">
+          <view class="videomodel {{item.video.show_type == 0?'h-video':'w-video'}}"
+            wx:if="{{item.video!=null && item.video!=''}}">
           <image bindtap="getVideoUrl" data-video="{{item.video.video_url}}" mode="aspectFill" class="video-image"
             data-index="{{index}}" src="{{item.video.video_thumb_url}}"></image>
           <view class="vide-icon-box" bindtap="getVideoUrl" data-video="{{item.video.video_url}}"
@@ -69,7 +72,7 @@
           showScrollbar="{{false}}" class="address-tag-all-view">
           <view bindtap='openmap' data-lat="{{item.address.latitude}}" data-lng="{{item.address.longitude}}"
             data-name="{{item.address.address_detailed}}" class="address-view"
-            wx:if="{{item.address!=null && item.address!=''}}">
+            wx:if="{{item.address && item.address.address_detailed}}">
             <image class="view-image" mode="widthFix" src="/image/loc_icon_show.png"></image>
             <text class="view-text">{{item.address.address_detailed}}</text>
           </view>
@@ -78,7 +81,8 @@
             <image class="view-image" src="/image/topic.png"></image>
             <text class="view-text">{{tag.tags_name}}</text>
           </view>
-          <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}">
+          <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}"
+            wx:if="{{item.circle && item.circle.circle_name}}">
             <text>{{item.circle.circle_name}}</text>
           </view>
         </scroll-view>
@@ -99,7 +103,7 @@
               <text>{{filters.toFix(item.comment_count)}}</text>
             </view>
             <view catchtap="taplikes" data-id="{{item.id}}" data-index="{{index}}" class="reply">
-              <image animation="{{subject.voteAnimation}}" lazyLoad="{{true}}" mode="aspectFill"
+              <image lazyLoad="{{true}}" mode="aspectFill"
                 src="{{item.is_like?'/image/heart-fill.png':'/image/heart-line.png'}}">
               </image>
               <text>{{filters.toFix(item.like_count)}}</text>
@@ -136,10 +140,18 @@
       </block>
     </view>
 
-    <!-- 广告块 -->
-    <view class="ad-box" wx:if="{{ad && index%6==1}}">
-      <view class="adContainer">
-        <ad-custom unit-id="{{ad}}"></ad-custom>
+    <!-- 运营广告块 -->
+    <view class="ad-box" wx:if="{{feedAdCard && index%6==1}}">
+      <view class="adContainer adCard" bindtap="openOperationAd" data-ad="{{feedAdCard}}">
+        <image class="adCard-image" mode="aspectFill" src="{{feedAdCard.image_url}}"></image>
+        <view class="adCard-content">
+          <view class="adCard-top">
+            <view class="adCard-badge">推广</view>
+            <view class="adCard-button">{{feedAdCard.button_text}}</view>
+          </view>
+          <view class="adCard-title">{{feedAdCard.title}}</view>
+          <view class="adCard-subtitle" wx:if="{{feedAdCard.subtitle}}">{{feedAdCard.subtitle}}</view>
+        </view>
       </view>
     </view>
   </view>
@@ -148,7 +160,7 @@
   <l-popup show="{{rewardPopup}}" bind:lintap="shutReward" animation="true" z-index="99999991009">
     <view class="reward-add-box">
       <image class="reward-add-box-image"
-        src="http://127.0.0.1/storage/wxprogram/image/Make%20it%20rain-cuate.png" mode="aspectFill" />
+        src="/backend/static/illustrations/savings-cuate.png" mode="aspectFill" />
       <view class="reward-add-input-box">
         <text>¥</text>
         <input class="reward-add-input" bindinput="rewardPriceChange" value="{{rewardPrice}}"
@@ -322,7 +334,7 @@
             size="28" color="#949494" />
         </view>
         <block wx:if="{{commentIsNull && comments.length <= 0}}">
-          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Messaging%20fun-rafiki.png"
+          <empty-view icon="/backend/static/illustrations/messaging-fun-rafiki.png"
             title="快来抢占沙发吧">
           </empty-view>
         </block>

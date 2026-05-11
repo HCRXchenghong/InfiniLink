@@ -1,6 +1,6 @@
 {
   "navigationBarBackgroundColor": "#090808",
-  "navigationBarTitleText": "",
+  "navigationBarTitleText": "会员中心",
   "navigationBarTextStyle": "white",
   "usingComponents": {
     "l-price": "/linui/price/index"

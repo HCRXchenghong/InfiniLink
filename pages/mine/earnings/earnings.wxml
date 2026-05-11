@@ -18,7 +18,7 @@
 </view>
 
 <l-sticky scrollTop="{{scrollTop}}" mode="css">
-  <l-sticky-item top="-1" l-header-sticky-class="header-sticky-class">
+  <l-sticky-item top="{{stickyTop}}" l-header-sticky-class="header-sticky-class">
     <view slot="header" class="nav">
       <view bindtap="onHandleClick" class="tag-box" data-index="{{index}}" wx:for="{{tabData}}" wx:key="item">
         <view class="taga-item {{swithBarIndex==index?'active':''}}" data-index="{{index}}">{{item}}</view>
@@ -44,7 +44,7 @@
           </view>
         </block>
         <block wx:else>
-          <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Business%20decisions-amico.png"
+          <empty-view icon="/backend/static/illustrations/plain-credit-card-cuate.png"
             title="空">
           </empty-view>
         </block>
@@ -64,7 +64,7 @@
             </block>
           </block>
           <block wx:else>
-            <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Business%20decisions-amico.png"
+            <empty-view icon="/backend/static/illustrations/plain-credit-card-cuate.png"
               title="空">
             </empty-view>
           </block>
@@ -77,7 +77,7 @@
 <l-popup show="{{withdrawalPopup}}" bind:lintap="withdrawalTap" animation="true" z-index="99">
   <view class="withdrawal-add-box">
     <image class="withdrawal-add-box-image"
-      src="http://127.0.0.1/storage/wxprogram/image/Wallet-cuate.png" mode="aspectFill" />
+      src="/backend/static/illustrations/plain-credit-card-cuate.png" mode="aspectFill" />
     <view class="withdrawal-add-box-view">
       <view class="{{index==idx?'bd':'' || item>withdrawalBalance?'hd':''}}" wx:for="{{withdrawalPrice}}" wx:key="id"
         bindtap="{{item>withdrawalBalance?'notWithdrawal':'addwithdrawalPrice'}}" data-idx="{{index}}"

@@ -5,6 +5,13 @@ const util = require('./lib/util');
 
 const downloader = new Downloader();
 
+function getCompatSystemInfo() {
+  const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+  const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+  const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+  return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
 // 最大尝试的绘制次数
 const MAX_PAINT_COUNT = 5;
 Component({
@@ -70,7 +77,7 @@ Component({
 
       if (!(getApp().systemInfo && getApp().systemInfo.screenWidth)) {
         try {
-          getApp().systemInfo = wx.getSystemInfoSync();
+          getApp().systemInfo = getCompatSystemInfo();
         } catch (e) {
           const error = `Painter get system info failed, ${JSON.stringify(e)}`;
           that.triggerEvent('imgErr', {

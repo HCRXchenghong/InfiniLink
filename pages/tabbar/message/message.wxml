@@ -1,3 +1,4 @@
+<view bindtouchstart="onUserTouchActivity">
 <button bindtap="onMenuItem" class="dialog-item" data-url="{{item.url}}" hoverClass="hover" wx:for="{{messageQHList}}"
   wx:key="index">
   <view class="item-head">
@@ -14,16 +15,18 @@
     </view>
   </view>
 </button>
-<button open-type="contact" class="dialog-item">
+<button bindtap="openCustomerServiceChat" class="dialog-item" wx:if="{{customerServiceThread && customerServiceThread.user}}">
   <view class="item-head">
-    <image class="icon" lazyLoad="{{true}}" mode="aspectFill" src="/image/logo-icon.png"></image>
+    <image class="icon" lazyLoad="{{true}}" mode="aspectFill" src="{{customerServiceThread.user.user_avatar}}"></image>
   </view>
   <view class="item-body">
     <view class="info">
-      <view class="name">轻航（官方客服）</view>
+      <view class="name">{{customerServiceThread.user.user_name}}</view>
+      <view class="time" wx:if="{{customerServiceThread.datetime}}">{{customerServiceThread.datetime}}</view>
     </view>
     <view class="content">
-      <view class="desc">实时在线</view>
+      <view class="desc">{{customerServiceThread.chat_content || customerServiceThread.online_text}}</view>
+      <view class="red-dot" wx:if="{{customerServiceThread.read_count>0}}">{{customerServiceThread.read_count}}</view>
     </view>
   </view>
 </button>
@@ -43,7 +46,7 @@
           <view class="content">
             <mp-html wx:if="{{item.read == '' || item.read == null}}" content="{{item.chat_content||'[动画表情]'}}"
               class="desc" />
-            <rmp-html wx:else content="{{item.read.chat_content||'[动画表情]'}}" class="desc" />
+            <mp-html wx:else content="{{item.read.chat_content||'[动画表情]'}}" class="desc" />
             <view class="red-dot" wx:if="{{item.read_count > 0 && item.user.id != userInfo.id}}">{{item.read_count}}
             </view>
           </view>
@@ -55,4 +58,4 @@
     </l-slide-view>
   </block>
 </view>
-
+</view>

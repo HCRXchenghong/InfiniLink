@@ -14,7 +14,10 @@
                 <image mode wx:if="{{item.user.is_official == 1}}" class="header-label" src="/image/official.png" />
                 <image mode wx:if="{{item.user.is_authentication == 1}}" class="header-label"
                   src="/image/authentication.png" />
-                <image mode wx:if="{{item.user.is_member == 1}}" class="header-label" src="/image/vip.png" />
+                <view class="level-pill {{item.user.level_theme_class || 'level-theme-1'}}">{{item.user.level_badge_text || item.user.level_label || 'LV1'}}</view>
+                <view wx:if="{{item.user.is_member == 1 && item.user.membership_tier == 'max'}}"
+                  class="member-pill member-pill-max">MAX</view>
+                <view wx:elif="{{item.user.is_member == 1}}" class="member-pill member-pill-pro">PRO</view>
               </view>
             </view>
           </navigator>
@@ -72,7 +75,7 @@
             showScrollbar="{{false}}" class="address-tag-all-view">
             <view bindtap='openmap' data-lat="{{item.address.latitude}}" data-lng="{{item.address.longitude}}"
               data-name="{{item.address.address_detailed}}" class="address-view"
-              wx:if="{{item.address!=null && item.address!=''}}">
+              wx:if="{{item.address && item.address.address_detailed}}">
               <image class="view-image" mode="widthFix" src="/image/loc_icon_show.png"></image>
               <text class="view-text">{{item.address.address_detailed}}</text>
             </view>
@@ -81,7 +84,8 @@
               <image class="view-image" src="/image/topic.png"></image>
               <text class="view-text">{{tag.tags_name}}</text>
             </view>
-            <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}">
+            <view catchtap="routeClubDetail" class="related-subject" data-id="{{item.circle.id}}"
+              wx:if="{{item.circle && item.circle.circle_name}}">
               <text>{{item.circle.circle_name}}</text>
             </view>
           </scroll-view>
@@ -90,7 +94,7 @@
     </view>
   </block>
   <block wx:else>
-    <empty-view class="empty-view" icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif"
+    <empty-view class="empty-view" icon="/backend/static/illustrations/no-data-cuate.png"
       title="空" />
   </block>
 </l-skeleton>

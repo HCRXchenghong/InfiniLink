@@ -384,12 +384,24 @@ const helper = {
         return rawUrl;
     },
 }
+
+function getCompatWindowInfo() {
+    const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
+    const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
+    const appBaseInfo = typeof wx.getAppBaseInfo === 'function' ? wx.getAppBaseInfo() : {};
+    return Object.assign({}, appBaseInfo, deviceInfo, windowInfo);
+}
+
+function getCompatDeviceInfo() {
+    return getCompatWindowInfo();
+}
+
 Component({
     properties: {
     },
     created() {
-        const sysInfo = wx.getSystemInfoSync();
-        const screenWidth = sysInfo.screenWidth;
+        const sysInfo = getCompatWindowInfo();
+        const screenWidth = sysInfo.windowWidth || sysInfo.screenWidth || 375;
         this.factor = screenWidth / 750;
     },
     methods: Object.assign({
@@ -490,7 +502,7 @@ Component({
                         }
                     });
 
-                    const res = wx.getSystemInfoSync();
+                    const res = getCompatDeviceInfo();
                     const platform = res.platform;
                     let time = 0;
                     if (platform === 'android') {
@@ -518,4 +530,3 @@ Component({
         },
     }, main, handle, helper),
 });
-

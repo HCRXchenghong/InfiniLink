@@ -23,7 +23,7 @@
       <l-water-flow generic:l-water-flow-item="product" column-gap="30rpx" />
     </block>
     <block wx:else>
-      <empty-view icon="http://127.0.0.1/storage/wxprogram/image/Empty.gif" title="空" />
+      <empty-view icon="/backend/static/illustrations/no-data-cuate.png" title="空" />
     </block>
   </l-skeleton>
   <l-loadmore show="{{loadmoreShow}}" type="{{loadingShow?'end':'loading'}}" end-text="已经到底了" loading-text="" size="28"

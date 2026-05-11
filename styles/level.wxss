@@ -1,0 +1,59 @@
+.level-theme-1 {
+  background: linear-gradient(135deg, #334155 0%, #64748b 100%);
+  border: 1px solid rgba(226, 232, 240, 0.46);
+  color: #f8fafc;
+}
+
+.level-theme-2 {
+  background: linear-gradient(135deg, #075985 0%, #0ea5e9 100%);
+  border: 1px solid rgba(186, 230, 253, 0.48);
+  color: #f8fafc;
+}
+
+.level-theme-3 {
+  background: linear-gradient(135deg, #065f46 0%, #10b981 100%);
+  border: 1px solid rgba(167, 243, 208, 0.46);
+  color: #ecfdf5;
+}
+
+.level-theme-4 {
+  background: linear-gradient(135deg, #92400e 0%, #f59e0b 100%);
+  border: 1px solid rgba(253, 230, 138, 0.50);
+  color: #fffbeb;
+}
+
+.level-theme-5 {
+  background: linear-gradient(135deg, #9f1239 0%, #fb7185 100%);
+  border: 1px solid rgba(254, 205, 211, 0.48);
+  color: #fff1f2;
+}
+
+.level-theme-6 {
+  background: linear-gradient(135deg, #312e81 0%, #6366f1 100%);
+  border: 1px solid rgba(199, 210, 254, 0.48);
+  color: #eef2ff;
+}
+
+.level-theme-7 {
+  background: linear-gradient(135deg, #134e4a 0%, #14b8a6 100%);
+  border: 1px solid rgba(153, 246, 228, 0.48);
+  color: #f0fdfa;
+}
+
+.level-theme-8 {
+  background: linear-gradient(135deg, #581c87 0%, #a855f7 100%);
+  border: 1px solid rgba(233, 213, 255, 0.48);
+  color: #faf5ff;
+}
+
+.level-theme-9 {
+  background: linear-gradient(135deg, #7f1d1d 0%, #f97316 100%);
+  border: 1px solid rgba(254, 215, 170, 0.52);
+  color: #fff7ed;
+}
+
+.level-theme-10 {
+  background: linear-gradient(135deg, #111827 0%, #b45309 100%);
+  border: 1px solid rgba(253, 230, 138, 0.62);
+  color: #fffbeb;
+}

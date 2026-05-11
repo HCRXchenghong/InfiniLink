@@ -14,6 +14,7 @@ const options = {
     iconTheme: "white",
     showmenu: false,
     scrollTop: 0,
+    customBar: 0,
     circleInfo: [],
     circleUser: [],
     tabData: ["最新", "热门"],
@@ -111,8 +112,9 @@ const options = {
     let that = this;
     that.setData({
       id: options.id,
-      customBar: app.globalData.CustomBar
+      customBar: Number(app.globalData.CustomBar || 0)
     })
+    that.loadOperationAd('feed_stream');
     that.circleInfo(options.id);
     that.getCircleUserList(options.id);
     that.postsByCircleId(options.id, that.data.swithBarIndex, that.data.postsPage)
